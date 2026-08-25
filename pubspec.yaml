@@ -1,0 +1,55 @@
+name: wuji
+description: "物迹 - 个人物品管理与价值追踪 App"
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # 状态管理 / 路由
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.6.2
+
+  # 本地数据库
+  drift: ^2.22.1
+  drift_flutter: ^0.2.4
+  sqlite3_flutter_libs: ^0.5.26
+
+  # 文件与图片
+  path_provider: ^2.1.5
+  path: ^1.9.0
+  image_picker: ^1.1.2
+
+  # 国际化 / 格式化
+  intl: ^0.20.2
+
+  # 其他
+  uuid: ^4.5.1
+  collection: ^1.19.0
+  flutter_markdown: ^0.7.7+1
+  fl_chart: ^0.69.2
+  share_plus: ^10.1.2
+  file_picker: ^8.1.6
+  permission_handler: ^11.3.1
+  http: ^1.2.2
+  flutter_secure_storage: ^9.2.2
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.10.0
+  local_auth: ^2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  drift_dev: ^2.22.1
+  build_runner: ^2.4.13
+
+flutter:
+  uses-material-design: true
