@@ -116,6 +116,22 @@ void main() {
         isEmpty);
   });
 
+  test('日均成本之和与均值口径区分', () {
+    // 两件持有物品：a 购于 100 天前 1000 元（10 元/天），
+    // b 购于 100 天前 100 元（1 元/天）。
+    final items = [
+      _item('a', ItemStatus.inUse, price: 100000,
+          purchaseDate: now.subtract(const Duration(days: 100))),
+      _item('b', ItemStatus.inUse, price: 10000,
+          purchaseDate: now.subtract(const Duration(days: 100))),
+    ];
+    final overview = StatisticsService.overview(items, const {}, now: now);
+    // usedDays 含首日共 101 天：件均 9.90 + 0.99 元/天。
+    // 之和 = 10.89 → 10.9；均值 = 5.445 → 5.4（口径互不相同）。
+    expect(overview.sumDailyCost.toStringAsFixed(1), '10.9');
+    expect(overview.avgDailyCost.toStringAsFixed(1), '5.4');
+  });
+
   test('日均成本榜单排序', () {
     final items = [
       _item('cheap', ItemStatus.inUse, price: 100, purchaseDate: DateTime(2026, 1, 1)),

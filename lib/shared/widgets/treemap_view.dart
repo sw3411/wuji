@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme.dart';
+
 /// 矩形树图数据块。
 class TreemapTile {
   const TreemapTile({
@@ -95,8 +97,9 @@ class TreemapView extends StatelessWidget {
                                         e.tile.subtitle!,
                                         style: TextStyle(
                                           fontSize: 11,
-                                          color:
-                                              Colors.white.withValues(alpha: 0.9),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.9,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -135,9 +138,13 @@ class TreemapView extends StatelessWidget {
     final head = tiles.sublist(0, split);
     final tail = tiles.sublist(split);
     final headTotal = head.fold<int>(
-        0, (s, t) => s + (t.value <= 0 ? 1 : t.value));
+      0,
+      (s, t) => s + (t.value <= 0 ? 1 : t.value),
+    );
     final tailTotal = tail.fold<int>(
-        0, (s, t) => s + (t.value <= 0 ? 1 : t.value));
+      0,
+      (s, t) => s + (t.value <= 0 ? 1 : t.value),
+    );
     final ratio = headTotal / (headTotal + tailTotal);
 
     // 沿长边分割，保持分块接近正方。
@@ -146,13 +153,21 @@ class TreemapView extends StatelessWidget {
     if (rect.width >= rect.height) {
       final w = rect.width * ratio;
       headRect = Rect.fromLTWH(rect.left, rect.top, w, rect.height);
-      tailRect =
-          Rect.fromLTWH(rect.left + w, rect.top, rect.width - w, rect.height);
+      tailRect = Rect.fromLTWH(
+        rect.left + w,
+        rect.top,
+        rect.width - w,
+        rect.height,
+      );
     } else {
       final h = rect.height * ratio;
       headRect = Rect.fromLTWH(rect.left, rect.top, rect.width, h);
-      tailRect =
-          Rect.fromLTWH(rect.left, rect.top + h, rect.width, rect.height - h);
+      tailRect = Rect.fromLTWH(
+        rect.left,
+        rect.top + h,
+        rect.width,
+        rect.height - h,
+      );
     }
     return [
       ..._layout(head, headRect, headTotal),
@@ -163,14 +178,15 @@ class TreemapView extends StatelessWidget {
 
 /// 分类色板（Anthropic 强调色系扩展）。
 List<Color> treemapPalette(Brightness brightness) {
+  // 宠迹 v5 低饱和家族：同明度、无彩虹感。
   return const [
-    Color(0xFFC98F78), // 柔赤陶
-    Color(0xFF8A9B7A), // 灰绿
-    Color(0xFF7E93AC), // 灰蓝
-    Color(0xFFB08A72), // 柔赭
-    Color(0xFF9A8FA5), // 灰紫
-    Color(0xFFB08A9A), // 灰玫瑰
-    Color(0xFF85807A), // 暖灰
-    Color(0xFFA8A49B), // Cloudy
+    AppTheme.sage,
+    AppTheme.ochre,
+    AppTheme.steel,
+    AppTheme.rose,
+    AppTheme.mauve,
+    AppTheme.olive,
+    AppTheme.taupe,
+    AppTheme.greenLight,
   ];
 }

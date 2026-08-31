@@ -30,34 +30,33 @@ class Category {
     int? colorValue,
     int? sortOrder,
     bool? isHidden,
-  }) =>
-      Category(
-        id: id,
-        name: name ?? this.name,
-        icon: icon ?? this.icon,
-        colorValue: colorValue ?? this.colorValue,
-        sortOrder: sortOrder ?? this.sortOrder,
-        isSystem: isSystem,
-        isHidden: isHidden ?? this.isHidden,
-      );
+  }) => Category(
+    id: id,
+    name: name ?? this.name,
+    icon: icon ?? this.icon,
+    colorValue: colorValue ?? this.colorValue,
+    sortOrder: sortOrder ?? this.sortOrder,
+    isSystem: isSystem,
+    isHidden: isHidden ?? this.isHidden,
+  );
 
   factory Category.fromJson(Map<String, dynamic> json) => Category(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        icon: json['icon'] as String,
-        colorValue: (json['colorValue'] as num).toInt(),
-        sortOrder: (json['sortOrder'] as num).toInt(),
-        isSystem: json['isSystem'] as bool? ?? false,
-        isHidden: json['isHidden'] as bool? ?? false,
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    icon: json['icon'] as String,
+    colorValue: (json['colorValue'] as num).toInt(),
+    sortOrder: (json['sortOrder'] as num).toInt(),
+    isSystem: json['isSystem'] as bool? ?? false,
+    isHidden: json['isHidden'] as bool? ?? false,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'icon': icon,
-        'colorValue': colorValue,
-        'sortOrder': sortOrder,
-        'isSystem': isSystem,
-        'isHidden': isHidden,
-      };
+    'id': id,
+    'name': name,
+    'icon': icon,
+    'colorValue': colorValue,
+    'sortOrder': sortOrder,
+    'isSystem': isSystem,
+    'isHidden': isHidden,
+  };
 }

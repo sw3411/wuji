@@ -2202,6 +2202,15 @@ class $LocationsTable extends Locations
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _iconMeta = const VerificationMeta('icon');
+  @override
+  late final GeneratedColumn<String> icon = GeneratedColumn<String>(
+    'icon',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _sortOrderMeta = const VerificationMeta(
     'sortOrder',
   );
@@ -2243,6 +2252,7 @@ class $LocationsTable extends Locations
     parentId,
     description,
     imagePath,
+    icon,
     sortOrder,
     createdAt,
     updatedAt,
@@ -2291,6 +2301,12 @@ class $LocationsTable extends Locations
       context.handle(
         _imagePathMeta,
         imagePath.isAcceptableOrUnknown(data['image_path']!, _imagePathMeta),
+      );
+    }
+    if (data.containsKey('icon')) {
+      context.handle(
+        _iconMeta,
+        icon.isAcceptableOrUnknown(data['icon']!, _iconMeta),
       );
     }
     if (data.containsKey('sort_order')) {
@@ -2344,6 +2360,10 @@ class $LocationsTable extends Locations
         DriftSqlType.string,
         data['${effectivePrefix}image_path'],
       ),
+      icon: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icon'],
+      ),
       sortOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
@@ -2371,6 +2391,7 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
   final String? parentId;
   final String? description;
   final String? imagePath;
+  final String? icon;
   final int sortOrder;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -2380,6 +2401,7 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
     this.parentId,
     this.description,
     this.imagePath,
+    this.icon,
     required this.sortOrder,
     required this.createdAt,
     required this.updatedAt,
@@ -2397,6 +2419,9 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
     }
     if (!nullToAbsent || imagePath != null) {
       map['image_path'] = Variable<String>(imagePath);
+    }
+    if (!nullToAbsent || icon != null) {
+      map['icon'] = Variable<String>(icon);
     }
     map['sort_order'] = Variable<int>(sortOrder);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -2417,6 +2442,7 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
       imagePath: imagePath == null && nullToAbsent
           ? const Value.absent()
           : Value(imagePath),
+      icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
       sortOrder: Value(sortOrder),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -2434,6 +2460,7 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
       parentId: serializer.fromJson<String?>(json['parentId']),
       description: serializer.fromJson<String?>(json['description']),
       imagePath: serializer.fromJson<String?>(json['imagePath']),
+      icon: serializer.fromJson<String?>(json['icon']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -2448,6 +2475,7 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
       'parentId': serializer.toJson<String?>(parentId),
       'description': serializer.toJson<String?>(description),
       'imagePath': serializer.toJson<String?>(imagePath),
+      'icon': serializer.toJson<String?>(icon),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -2460,6 +2488,7 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
     Value<String?> parentId = const Value.absent(),
     Value<String?> description = const Value.absent(),
     Value<String?> imagePath = const Value.absent(),
+    Value<String?> icon = const Value.absent(),
     int? sortOrder,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -2469,6 +2498,7 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
     parentId: parentId.present ? parentId.value : this.parentId,
     description: description.present ? description.value : this.description,
     imagePath: imagePath.present ? imagePath.value : this.imagePath,
+    icon: icon.present ? icon.value : this.icon,
     sortOrder: sortOrder ?? this.sortOrder,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -2482,6 +2512,7 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
           ? data.description.value
           : this.description,
       imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
+      icon: data.icon.present ? data.icon.value : this.icon,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -2496,6 +2527,7 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
           ..write('parentId: $parentId, ')
           ..write('description: $description, ')
           ..write('imagePath: $imagePath, ')
+          ..write('icon: $icon, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -2510,6 +2542,7 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
     parentId,
     description,
     imagePath,
+    icon,
     sortOrder,
     createdAt,
     updatedAt,
@@ -2523,6 +2556,7 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
           other.parentId == this.parentId &&
           other.description == this.description &&
           other.imagePath == this.imagePath &&
+          other.icon == this.icon &&
           other.sortOrder == this.sortOrder &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -2534,6 +2568,7 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
   final Value<String?> parentId;
   final Value<String?> description;
   final Value<String?> imagePath;
+  final Value<String?> icon;
   final Value<int> sortOrder;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -2544,6 +2579,7 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
     this.parentId = const Value.absent(),
     this.description = const Value.absent(),
     this.imagePath = const Value.absent(),
+    this.icon = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2555,6 +2591,7 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
     this.parentId = const Value.absent(),
     this.description = const Value.absent(),
     this.imagePath = const Value.absent(),
+    this.icon = const Value.absent(),
     this.sortOrder = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -2569,6 +2606,7 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
     Expression<String>? parentId,
     Expression<String>? description,
     Expression<String>? imagePath,
+    Expression<String>? icon,
     Expression<int>? sortOrder,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -2580,6 +2618,7 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
       if (parentId != null) 'parent_id': parentId,
       if (description != null) 'description': description,
       if (imagePath != null) 'image_path': imagePath,
+      if (icon != null) 'icon': icon,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -2593,6 +2632,7 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
     Value<String?>? parentId,
     Value<String?>? description,
     Value<String?>? imagePath,
+    Value<String?>? icon,
     Value<int>? sortOrder,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -2604,6 +2644,7 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
       parentId: parentId ?? this.parentId,
       description: description ?? this.description,
       imagePath: imagePath ?? this.imagePath,
+      icon: icon ?? this.icon,
       sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -2629,6 +2670,9 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
     if (imagePath.present) {
       map['image_path'] = Variable<String>(imagePath.value);
     }
+    if (icon.present) {
+      map['icon'] = Variable<String>(icon.value);
+    }
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
     }
@@ -2652,6 +2696,7 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
           ..write('parentId: $parentId, ')
           ..write('description: $description, ')
           ..write('imagePath: $imagePath, ')
+          ..write('icon: $icon, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -5563,6 +5608,7 @@ typedef $$LocationsTableCreateCompanionBuilder =
       Value<String?> parentId,
       Value<String?> description,
       Value<String?> imagePath,
+      Value<String?> icon,
       Value<int> sortOrder,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -5575,6 +5621,7 @@ typedef $$LocationsTableUpdateCompanionBuilder =
       Value<String?> parentId,
       Value<String?> description,
       Value<String?> imagePath,
+      Value<String?> icon,
       Value<int> sortOrder,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -5612,6 +5659,11 @@ class $$LocationsTableFilterComposer
 
   ColumnFilters<String> get imagePath => $composableBuilder(
     column: $table.imagePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get icon => $composableBuilder(
+    column: $table.icon,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5665,6 +5717,11 @@ class $$LocationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get icon => $composableBuilder(
+    column: $table.icon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
     builder: (column) => ColumnOrderings(column),
@@ -5706,6 +5763,9 @@ class $$LocationsTableAnnotationComposer
 
   GeneratedColumn<String> get imagePath =>
       $composableBuilder(column: $table.imagePath, builder: (column) => column);
+
+  GeneratedColumn<String> get icon =>
+      $composableBuilder(column: $table.icon, builder: (column) => column);
 
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
@@ -5753,6 +5813,7 @@ class $$LocationsTableTableManager
                 Value<String?> parentId = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<String?> imagePath = const Value.absent(),
+                Value<String?> icon = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -5763,6 +5824,7 @@ class $$LocationsTableTableManager
                 parentId: parentId,
                 description: description,
                 imagePath: imagePath,
+                icon: icon,
                 sortOrder: sortOrder,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -5775,6 +5837,7 @@ class $$LocationsTableTableManager
                 Value<String?> parentId = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<String?> imagePath = const Value.absent(),
+                Value<String?> icon = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -5785,6 +5848,7 @@ class $$LocationsTableTableManager
                 parentId: parentId,
                 description: description,
                 imagePath: imagePath,
+                icon: icon,
                 sortOrder: sortOrder,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

@@ -53,7 +53,10 @@ class LocationDetailPage extends ConsumerWidget {
                   ? Image.file(
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                      ),
                       File(loc.imagePath!),
                     )
                   : Container(
@@ -63,7 +66,8 @@ class LocationDetailPage extends ConsumerWidget {
                           .withValues(alpha: 0.4),
                     ),
             ),
-          ),          SliverToBoxAdapter(
+          ),
+          SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -85,8 +89,9 @@ class LocationDetailPage extends ConsumerWidget {
                                       ? '顶级位置'
                                       : tree.fullPath(loc.id),
                                   style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],
@@ -94,12 +99,15 @@ class LocationDetailPage extends ConsumerWidget {
                           if (loc.description != null &&
                               loc.description!.isNotEmpty) ...[
                             const SizedBox(height: 8),
-                            Text(loc.description!,
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant)),
+                            Text(
+                              loc.description!,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                           ],
                           const SizedBox(height: 8),
                           Text(
@@ -116,7 +124,8 @@ class LocationDetailPage extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => context.push('/item/new', extra: loc.id),
+                          onPressed: () =>
+                              context.push('/item/new', extra: loc.id),
                           icon: const Icon(Icons.add, size: 18),
                           label: const Text('新增物品到此位置'),
                         ),
@@ -127,18 +136,22 @@ class LocationDetailPage extends ConsumerWidget {
                     SectionTitle('子位置'),
                     ...children.map((c) {
                       final cnt = items
-                          .where((i) =>
-                              !i.isDeleted &&
-                              i.locationId != null &&
-                              scope.contains(i.locationId) &&
-                              tree.descendantIds(c.id).contains(i.locationId))
+                          .where(
+                            (i) =>
+                                !i.isDeleted &&
+                                i.locationId != null &&
+                                scope.contains(i.locationId) &&
+                                tree.descendantIds(c.id).contains(i.locationId),
+                          )
                           .length;
                       return Card(
                         child: ListTile(
                           leading: const Icon(Icons.folder_outlined),
                           title: Text(c.name),
-                          trailing: Text('$cnt 件',
-                              style: const TextStyle(fontSize: 12)),
+                          trailing: Text(
+                            '$cnt 件',
+                            style: const TextStyle(fontSize: 12),
+                          ),
                           onTap: () => context.push('/locations/${c.id}'),
                         ),
                       );
@@ -146,11 +159,20 @@ class LocationDetailPage extends ConsumerWidget {
                   ],
                   SectionTitle('存放的物品（${here.length}）'),
                   ...here.map(
-                      (i) => ItemCard(item: i, sale: sales[i.id], currency: i.currency)),
+                    (i) => ItemCard(
+                      item: i,
+                      sale: sales[i.id],
+                      currency: i.currency,
+                    ),
+                  ),
                   const SizedBox(height: 32),
                 ],
               ),
             ),
+          ),
+          // 悬浮底导避让。,
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 110),
           ),
         ],
       ),

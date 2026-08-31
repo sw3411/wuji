@@ -14,6 +14,7 @@ class ItemFilter {
     this.dateEnd,
     this.priceMin,
     this.priceMax,
+    this.tag,
     this.favoriteOnly = false,
     this.soldOnly = false,
     this.expiringWarrantyOnly = false,
@@ -30,12 +31,16 @@ class ItemFilter {
   int? priceMin;
   int? priceMax;
   bool favoriteOnly;
+
+  /// 按标签过滤（用户标签 + AI 标签）。null = 不过滤。
+  String? tag;
   bool soldOnly;
   bool expiringWarrantyOnly;
   bool idleOnly;
   ItemSort sort;
 
   bool get hasActiveFilter =>
+      (tag?.isNotEmpty ?? false) ||
       search.isNotEmpty ||
       categoryIds.isNotEmpty ||
       statuses.isNotEmpty ||
@@ -50,65 +55,66 @@ class ItemFilter {
       idleOnly;
 
   ItemFilter copy() => ItemFilter(
-        search: search,
-        categoryIds: List.of(categoryIds),
-        statuses: List.of(statuses),
-        locationIds: List.of(locationIds),
-        dateStart: dateStart,
-        dateEnd: dateEnd,
-        priceMin: priceMin,
-        priceMax: priceMax,
-        favoriteOnly: favoriteOnly,
-        soldOnly: soldOnly,
-        expiringWarrantyOnly: expiringWarrantyOnly,
-        idleOnly: idleOnly,
-        sort: sort,
-      );
+    search: search,
+    categoryIds: List.of(categoryIds),
+    statuses: List.of(statuses),
+    locationIds: List.of(locationIds),
+    dateStart: dateStart,
+    dateEnd: dateEnd,
+    priceMin: priceMin,
+    priceMax: priceMax,
+    favoriteOnly: favoriteOnly,
+    tag: tag,
+    soldOnly: soldOnly,
+    expiringWarrantyOnly: expiringWarrantyOnly,
+    idleOnly: idleOnly,
+    sort: sort,
+  );
 
   factory ItemFilter.fromJson(Map<String, dynamic> json) => ItemFilter(
-        search: json['search'] as String? ?? '',
-        categoryIds: (json['categoryIds'] as List<dynamic>? ?? const [])
-            .map((e) => e.toString())
-            .toList(),
-        statuses: (json['statuses'] as List<dynamic>? ?? const [])
-            .map((e) => ItemStatus.fromName(e.toString()))
-            .toList(),
-        locationIds: (json['locationIds'] as List<dynamic>? ?? const [])
-            .map((e) => e.toString())
-            .toList(),
-        dateStart: json['dateStart'] == null
-            ? null
-            : DateTime.parse(json['dateStart'] as String),
-        dateEnd: json['dateEnd'] == null
-            ? null
-            : DateTime.parse(json['dateEnd'] as String),
-        priceMin: (json['priceMin'] as num?)?.toInt(),
-        priceMax: (json['priceMax'] as num?)?.toInt(),
-        favoriteOnly: json['favoriteOnly'] as bool? ?? false,
-        soldOnly: json['soldOnly'] as bool? ?? false,
-        expiringWarrantyOnly: json['expiringWarrantyOnly'] as bool? ?? false,
-        idleOnly: json['idleOnly'] as bool? ?? false,
-        sort: ItemSort.values.firstWhere(
-          (s) => s.name == json['sort'],
-          orElse: () => ItemSort.newestAdded,
-        ),
-      );
+    search: json['search'] as String? ?? '',
+    categoryIds: (json['categoryIds'] as List<dynamic>? ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    statuses: (json['statuses'] as List<dynamic>? ?? const [])
+        .map((e) => ItemStatus.fromName(e.toString()))
+        .toList(),
+    locationIds: (json['locationIds'] as List<dynamic>? ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    dateStart: json['dateStart'] == null
+        ? null
+        : DateTime.parse(json['dateStart'] as String),
+    dateEnd: json['dateEnd'] == null
+        ? null
+        : DateTime.parse(json['dateEnd'] as String),
+    priceMin: (json['priceMin'] as num?)?.toInt(),
+    priceMax: (json['priceMax'] as num?)?.toInt(),
+    favoriteOnly: json['favoriteOnly'] as bool? ?? false,
+    soldOnly: json['soldOnly'] as bool? ?? false,
+    expiringWarrantyOnly: json['expiringWarrantyOnly'] as bool? ?? false,
+    idleOnly: json['idleOnly'] as bool? ?? false,
+    sort: ItemSort.values.firstWhere(
+      (s) => s.name == json['sort'],
+      orElse: () => ItemSort.newestAdded,
+    ),
+  );
 
   Map<String, dynamic> toJson() => {
-        'search': search,
-        'categoryIds': categoryIds,
-        'statuses': statuses.map((s) => s.name).toList(),
-        'locationIds': locationIds,
-        'dateStart': dateStart?.toIso8601String(),
-        'dateEnd': dateEnd?.toIso8601String(),
-        'priceMin': priceMin,
-        'priceMax': priceMax,
-        'favoriteOnly': favoriteOnly,
-        'soldOnly': soldOnly,
-        'expiringWarrantyOnly': expiringWarrantyOnly,
-        'idleOnly': idleOnly,
-        'sort': sort.name,
-      };
+    'search': search,
+    'categoryIds': categoryIds,
+    'statuses': statuses.map((s) => s.name).toList(),
+    'locationIds': locationIds,
+    'dateStart': dateStart?.toIso8601String(),
+    'dateEnd': dateEnd?.toIso8601String(),
+    'priceMin': priceMin,
+    'priceMax': priceMax,
+    'favoriteOnly': favoriteOnly,
+    'soldOnly': soldOnly,
+    'expiringWarrantyOnly': expiringWarrantyOnly,
+    'idleOnly': idleOnly,
+    'sort': sort.name,
+  };
 }
 
 enum ItemSort {
@@ -152,20 +158,42 @@ List<Item> applyItemFilter(
     }).toList();
   }
   if (filter.categoryIds.isNotEmpty) {
-    result = result.where((i) => filter.categoryIds.contains(i.categoryId)).toList();
+    result = result
+        .where((i) => filter.categoryIds.contains(i.categoryId))
+        .toList();
+  }
+  if (filter.tag != null && filter.tag!.isNotEmpty) {
+    final t = filter.tag!.toLowerCase();
+    result = result.where((i) {
+      final all = [...i.tags, ...?i.aiTags]
+          .map((x) => x.toLowerCase())
+          .toList();
+      return all.any((x) => x == t || x.contains(t));
+    }).toList();
   }
   if (filter.statuses.isNotEmpty) {
     result = result.where((i) => filter.statuses.contains(i.status)).toList();
   }
   if (filter.locationIds.isNotEmpty || descendantLocationIds.isNotEmpty) {
     final ids = {...filter.locationIds, ...descendantLocationIds};
-    result = result.where((i) => i.locationId != null && ids.contains(i.locationId)).toList();
+    result = result
+        .where((i) => i.locationId != null && ids.contains(i.locationId))
+        .toList();
   }
   if (filter.dateStart != null) {
-    result = result.where((i) => !i.purchaseDate.isBefore(filter.dateStart!)).toList();
+    result = result
+        .where((i) => !i.purchaseDate.isBefore(filter.dateStart!))
+        .toList();
   }
   if (filter.dateEnd != null) {
-    final end = DateTime(filter.dateEnd!.year, filter.dateEnd!.month, filter.dateEnd!.day, 23, 59, 59);
+    final end = DateTime(
+      filter.dateEnd!.year,
+      filter.dateEnd!.month,
+      filter.dateEnd!.day,
+      23,
+      59,
+      59,
+    );
     result = result.where((i) => !i.purchaseDate.isAfter(end)).toList();
   }
   if (filter.priceMin != null) {
@@ -190,10 +218,16 @@ List<Item> applyItemFilter(
     result = result.where((i) => i.status == ItemStatus.idle).toList();
   }
 
-  int cmpDaily(Item a, Item b) => ItemCalculator.dailyCost(a, salesByItemId[a.id], now: now_)
-      .compareTo(ItemCalculator.dailyCost(b, salesByItemId[b.id], now: now_));
-  int cmpUsed(Item a, Item b) => ItemCalculator.usedDays(a, salesByItemId[a.id], now: now_)
-      .compareTo(ItemCalculator.usedDays(b, salesByItemId[b.id], now: now_));
+  int cmpDaily(Item a, Item b) => ItemCalculator.dailyCost(
+    a,
+    salesByItemId[a.id],
+    now: now_,
+  ).compareTo(ItemCalculator.dailyCost(b, salesByItemId[b.id], now: now_));
+  int cmpUsed(Item a, Item b) => ItemCalculator.usedDays(
+    a,
+    salesByItemId[a.id],
+    now: now_,
+  ).compareTo(ItemCalculator.usedDays(b, salesByItemId[b.id], now: now_));
 
   switch (filter.sort) {
     case ItemSort.newestAdded:

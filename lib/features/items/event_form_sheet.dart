@@ -4,20 +4,28 @@ import '../../core/utils/money.dart';
 import '../../domain/models/enums.dart';
 import '../../domain/models/item_event.dart';
 
+typedef SellLauncher = Future<void> Function();
+
 /// 添加自定义物品事件。
+/// [onSell]：选择「转卖」时的转卖流启动器（强制填金额/日期并联动）。
 Future<ItemEvent?> showEventFormSheet(
-    BuildContext context, String itemId) {
+  BuildContext context,
+  String itemId, {
+  SellLauncher? onSell,
+}) {
   return showModalBottomSheet<ItemEvent>(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
-    builder: (context) => _EventFormSheet(itemId: itemId),
+    builder: (context) => _EventFormSheet(itemId: itemId, onSell: onSell),
   );
 }
 
 class _EventFormSheet extends StatefulWidget {
-  const _EventFormSheet({required this.itemId});
+  const _EventFormSheet({required this.itemId, this.onSell});
 
   final String itemId;
+  final SellLauncher? onSell;
 
   @override
   State<_EventFormSheet> createState() => _EventFormSheetState();
@@ -62,8 +70,9 @@ class _EventFormSheetState extends State<_EventFormSheet> {
         eventType: _type,
         eventDate: _date,
         title: _titleCtrl.text.trim(),
-        description:
-            _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        description: _descCtrl.text.trim().isEmpty
+            ? null
+            : _descCtrl.text.trim(),
         amount: _amountCtrl.text.trim().isEmpty
             ? null
             : Money.parse(_amountCtrl.text),
@@ -77,7 +86,9 @@ class _EventFormSheetState extends State<_EventFormSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        left: 16, right: 16, top: 8,
+        left: 16,
+        right: 16,
+        top: 8,
         bottom: MediaQuery.of(context).viewInsets.bottom + 16,
       ),
       child: SingleChildScrollView(
@@ -85,60 +96,75 @@ class _EventFormSheetState extends State<_EventFormSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-          Text('添加事件', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 6,
-            children: ItemEventType.values
-                .where((t) => t != ItemEventType.purchased)
-                .map((t) => ChoiceChip(
+            Text('添加事件', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              children: ItemEventType.values
+                  .where((t) => t != ItemEventType.purchased)
+                  .map(
+                    (t) => ChoiceChip(
                       label: Text(t.label),
                       selected: _type == t,
-                      onSelected: (_) => setState(() => _type = t),
-                    ))
-                .toList(),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _titleCtrl,
-            decoration: const InputDecoration(labelText: '事件标题 *'),
-          ),
-          const SizedBox(height: 12),
-          InkWell(
-            onTap: _pickDate,
-            borderRadius: BorderRadius.circular(12),
-            child: InputDecorator(
-              decoration: const InputDecoration(labelText: '事件日期'),
-              child: Text(
-                  '${_date.year}-${_date.month.toString().padLeft(2, '0')}-${_date.day.toString().padLeft(2, '0')}'),
+                      onSelected: (_) {
+                        if (t == ItemEventType.sold && widget.onSell != null) {
+                          // 转卖必须走统一转卖流：强制填金额/日期。
+                          Navigator.pop(context);
+                          widget.onSell!();
+                          return;
+                        }
+                        setState(() => _type = t);
+                      },
+                    ),
+                  )
+                  .toList(),
             ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _amountCtrl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: '关联金额（元，可选）'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _descCtrl,
-            maxLines: 3,
-            decoration: const InputDecoration(labelText: '详细描述'),
-          ),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Text(_error!,
+            const SizedBox(height: 12),
+            TextField(
+              controller: _titleCtrl,
+              decoration: const InputDecoration(labelText: '事件标题 *'),
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: _pickDate,
+              borderRadius: BorderRadius.circular(12),
+              child: InputDecorator(
+                decoration: const InputDecoration(labelText: '事件日期'),
+                child: Text(
+                  '${_date.year}-${_date.month.toString().padLeft(2, '0')}-${_date.day.toString().padLeft(2, '0')}',
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _amountCtrl,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(labelText: '关联金额（元，可选）'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _descCtrl,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: '详细描述'),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  _error!,
                   style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                      fontSize: 13)),
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(onPressed: _submit, child: const Text('保存')),
             ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(onPressed: _submit, child: const Text('保存')),
-          ),
           ],
         ),
       ),

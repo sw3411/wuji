@@ -13,6 +13,8 @@ import '../../domain/models/item.dart';
 import '../../domain/models/location.dart';
 import '../../domain/models/sale_record.dart';
 import '../../domain/services/item_calculator.dart';
+import '../../domain/models/item_event.dart';
+import '../items/sale_form_sheet.dart';
 import '../../shared/widgets/common.dart';
 
 /// 盘点模式：按范围逐件核对物品“还在吗”，顺手处置丢失/丢弃/送人的物品。
@@ -20,8 +22,7 @@ class InventoryCheckPage extends ConsumerStatefulWidget {
   const InventoryCheckPage({super.key});
 
   @override
-  ConsumerState<InventoryCheckPage> createState() =>
-      _InventoryCheckPageState();
+  ConsumerState<InventoryCheckPage> createState() => _InventoryCheckPageState();
 }
 
 class _InventoryCheckPageState extends ConsumerState<InventoryCheckPage> {
@@ -37,8 +38,7 @@ class _InventoryCheckPageState extends ConsumerState<InventoryCheckPage> {
   bool get _finished => _queue != null && _index >= _queue!.length;
 
   void _start(String? scopeId, String scopeName) {
-    final items =
-        ref.read(itemsProvider).valueOrNull ?? const <Item>[];
+    final items = ref.read(itemsProvider).valueOrNull ?? const <Item>[];
     final locations =
         ref.read(locationsProvider).valueOrNull ?? const <Location>[];
     var list = items.where((i) => !i.isDeleted && i.status.isOwned).toList();
@@ -69,6 +69,7 @@ class _InventoryCheckPageState extends ConsumerState<InventoryCheckPage> {
   Future<void> _dispose() async {
     final item = _queue![_index];
     final status = await showModalBottomSheet<ItemStatus>(
+      useRootNavigator: true,
       context: context,
       builder: (context) => SafeArea(
         child: Column(
@@ -76,23 +77,31 @@ class _InventoryCheckPageState extends ConsumerState<InventoryCheckPage> {
           children: [
             Padding(
               padding: const EdgeInsets.all(12),
-              child: Text('「${item.name}」现在……',
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              child: Text(
+                '「${item.name}」现在……',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
             for (final s in [
               ItemStatus.discarded,
               ItemStatus.lost,
               ItemStatus.gifted,
               ItemStatus.consumed,
+              ItemStatus.sold,
             ])
               ListTile(
                 leading: Icon(switch (s) {
                   ItemStatus.discarded => Icons.delete_outline,
                   ItemStatus.lost => Icons.help_outline,
                   ItemStatus.gifted => Icons.card_giftcard,
+                  ItemStatus.sold => Icons.currency_exchange,
                   _ => Icons.local_fire_department_outlined,
                 }),
                 title: Text(s.label),
+                subtitle: s == ItemStatus.sold
+                    ? const Text('需填写金额与日期',
+                        style: TextStyle(fontSize: 11))
+                    : null,
                 onTap: () => Navigator.pop(context, s),
               ),
           ],
@@ -100,9 +109,47 @@ class _InventoryCheckPageState extends ConsumerState<InventoryCheckPage> {
       ),
     );
     if (status == null || !mounted) return;
-    await ref
-        .read(itemRepoProvider)
-        .updateItem(item.copyWith(status: status));
+
+    final repo = ref.read(itemRepoProvider);
+    final now = DateTime.now();
+
+    // 转卖：走完整转卖表单（金额/日期/平台），取消则停留当前物品。
+    if (status == ItemStatus.sold) {
+      final sale = await showSaleFormSheet(context, itemId: item.id);
+      if (sale == null) return;
+      if (!mounted) return;
+      await ref.read(saleRepoProvider).upsert(sale);
+      await repo.updateItem(item.copyWith(status: ItemStatus.sold));
+      await repo.addEvent(ItemEvent(
+        id: '',
+        itemId: item.id,
+        eventType: ItemEventType.sold,
+        eventDate: sale.saleDate,
+        title: '盘点时转卖给${sale.platform ?? '他人'}',
+        amount: sale.salePrice,
+        createdAt: now,
+        updatedAt: now,
+      ));
+    } else {
+      // 其余处置：改状态 + 按事件类型落一条生命周期事件。
+      await repo.updateItem(item.copyWith(status: status));
+      final type = switch (status) {
+        ItemStatus.discarded => ItemEventType.discarded,
+        ItemStatus.lost => ItemEventType.lost,
+        ItemStatus.gifted => ItemEventType.gifted,
+        _ => ItemEventType.custom,
+      };
+      await repo.addEvent(ItemEvent(
+        id: '',
+        itemId: item.id,
+        eventType: type,
+        eventDate: now,
+        title: '盘点确认：${status.label}',
+        createdAt: now,
+        updatedAt: now,
+      ));
+    }
+
     setState(() {
       _disposed++;
       _dispositions[item.id] = status;
@@ -121,15 +168,19 @@ class _InventoryCheckPageState extends ConsumerState<InventoryCheckPage> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('结束盘点？'),
-            content: Text('已核对 $_index 件（确认 $_kept、处置 $_disposed），'
-                '退出后本次进度不会保存。'),
+            content: Text(
+              '已核对 $_index 件（确认 $_kept、处置 $_disposed），'
+              '退出后本次进度不会保存。',
+            ),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('继续盘点')),
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('继续盘点'),
+              ),
               FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('结束')),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('结束'),
+              ),
             ],
           ),
         );
@@ -140,20 +191,18 @@ class _InventoryCheckPageState extends ConsumerState<InventoryCheckPage> {
         body: _queue == null
             ? _scopePicker(context)
             : _finished
-                ? _summary(context)
-                : _checkView(context, cs),
+            ? _summary(context)
+            : _checkView(context, cs),
       ),
     );
   }
 
   /// 第一步：选择盘点范围。
   Widget _scopePicker(BuildContext context) {
-    final items =
-        ref.watch(itemsProvider).valueOrNull ?? const <Item>[];
+    final items = ref.watch(itemsProvider).valueOrNull ?? const <Item>[];
     final locations =
         ref.watch(locationsProvider).valueOrNull ?? const <Location>[];
-    final owned =
-        items.where((i) => !i.isDeleted && i.status.isOwned).toList();
+    final owned = items.where((i) => !i.isDeleted && i.status.isOwned).toList();
 
     final counts = <String, int>{};
     for (final i in owned) {
@@ -166,20 +215,29 @@ class _InventoryCheckPageState extends ConsumerState<InventoryCheckPage> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('选择盘点范围',
-            style: AppTheme.cardTitle(Theme.of(context).colorScheme.onSurface)),
+        Text(
+          '选择盘点范围',
+          style: AppTheme.cardTitle(Theme.of(context).colorScheme.onSurface),
+        ),
         const SizedBox(height: 4),
-        Text('逐件确认物品是否还在，顺手处置已丢失 / 丢弃 / 送人的物品。',
-            style: AppTheme.caption(
-                Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text(
+          '逐件确认物品是否还在，顺手处置已丢失 / 丢弃 / 送人的物品。',
+          style: AppTheme.caption(
+            Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
         const SizedBox(height: 12),
         Card(
           child: ListTile(
-            leading: Icon(Icons.all_inbox_outlined,
-                color: Theme.of(context).colorScheme.primary),
+            leading: Icon(
+              Icons.all_inbox_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             title: const Text('全部持有物品'),
-            subtitle: Text('${owned.length} 件待核对',
-                style: const TextStyle(fontSize: 12)),
+            subtitle: Text(
+              '${owned.length} 件待核对',
+              style: const TextStyle(fontSize: 12),
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _start(null, '全部物品'),
           ),
@@ -191,8 +249,10 @@ class _InventoryCheckPageState extends ConsumerState<InventoryCheckPage> {
               child: ListTile(
                 leading: const Icon(Icons.folder_outlined),
                 title: Text(loc.name),
-                subtitle: Text('${counts[loc.id]} 件待核对',
-                    style: const TextStyle(fontSize: 12)),
+                subtitle: Text(
+                  '${counts[loc.id]} 件待核对',
+                  style: const TextStyle(fontSize: 12),
+                ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _start(loc.id, loc.name),
               ),
@@ -203,8 +263,10 @@ class _InventoryCheckPageState extends ConsumerState<InventoryCheckPage> {
             child: ListTile(
               leading: const Icon(Icons.question_mark_outlined),
               title: const Text('未设位置的物品'),
-              subtitle: Text('$unassigned 件待核对',
-                  style: const TextStyle(fontSize: 12)),
+              subtitle: Text(
+                '$unassigned 件待核对',
+                style: const TextStyle(fontSize: 12),
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _start('@unassigned', '未设位置'),
             ),
@@ -229,11 +291,15 @@ class _InventoryCheckPageState extends ConsumerState<InventoryCheckPage> {
             children: [
               Row(
                 children: [
-                  Text('$_scopeName · ${_index + 1}/$total',
-                      style: AppTheme.cardTitle(cs.onSurface)),
+                  Text(
+                    '$_scopeName · ${_index + 1}/$total',
+                    style: AppTheme.cardTitle(cs.onSurface),
+                  ),
                   const Spacer(),
-                  Text('确认 $_kept · 处置 $_disposed',
-                      style: AppTheme.caption(cs.onSurfaceVariant)),
+                  Text(
+                    '确认 $_kept · 处置 $_disposed',
+                    style: AppTheme.caption(cs.onSurfaceVariant),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -261,27 +327,35 @@ class _InventoryCheckPageState extends ConsumerState<InventoryCheckPage> {
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: ItemImage(item.coverImagePath,
-                                  icon: Icons.inventory_2_outlined,
-                                  size: 150),
+                              child: ItemImage(
+                                item.coverImagePath,
+                                icon: Icons.inventory_2_outlined,
+                                size: 150,
+                              ),
                             ),
                             const SizedBox(height: 14),
-                            Text(item.name,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTheme.cardTitle(cs.onSurface)
-                                    .copyWith(fontSize: 20)),
+                            Text(
+                              item.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTheme.cardTitle(
+                                cs.onSurface,
+                              ).copyWith(fontSize: 20),
+                            ),
                             const SizedBox(height: 6),
                             Wrap(
                               spacing: 8,
                               runSpacing: 6,
                               children: [
                                 StatusChip(item.status),
-                                PillChip(item.categoryName,
-                                    icon: Icons.category_outlined),
                                 PillChip(
-                                    item.locationName ?? '未设位置',
-                                    icon: Icons.folder_outlined),
+                                  item.categoryName,
+                                  icon: Icons.category_outlined,
+                                ),
+                                PillChip(
+                                  item.locationName ?? '未设位置',
+                                  icon: Icons.folder_outlined,
+                                ),
                               ],
                             ),
                             const SizedBox(height: 10),
@@ -349,7 +423,7 @@ class _InventoryCheckPageState extends ConsumerState<InventoryCheckPage> {
               children: [
                 _sumTile(cs, '$_kept', '确认还在', cs.primary),
                 const SizedBox(width: 12),
-                _sumTile(cs, '$_disposed', '已处置', const Color(0xFFAD6A63)),
+                _sumTile(cs, '$_disposed', '已处置', AppTheme.warnRed),
                 if (skipped > 0) ...[
                   const SizedBox(width: 12),
                   _sumTile(cs, '$skipped', '跳过', cs.onSurfaceVariant),

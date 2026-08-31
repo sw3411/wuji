@@ -65,43 +65,43 @@ class ItemInsights {
       maintenanceDue.isEmpty;
 
   List<InsightEntry> entries() => [
-        InsightEntry(
-          id: 'missing_price',
-          title: '价格缺失',
-          description: '非礼物但价格为 0，日均成本会失真',
-          items: missingPrice,
-        ),
-        InsightEntry(
-          id: 'missing_location',
-          title: '未设存放位置',
-          description: '补全位置，找东西更快',
-          items: missingLocation,
-        ),
-        InsightEntry(
-          id: 'missing_image',
-          title: '没有照片',
-          description: '拍照留档，转卖和保修更方便',
-          items: missingImage,
-        ),
-        InsightEntry(
-          id: 'long_idle',
-          title: '长期闲置',
-          description: '考虑转卖回血或重新利用',
-          items: longIdle,
-        ),
-        InsightEntry(
-          id: 'expiring_warranty',
-          title: '保修将到期',
-          description: '到期前检查或送保',
-          items: expiringWarranty,
-        ),
-        InsightEntry(
-          id: 'maintenance_due',
-          title: '保养/耗材到期',
-          description: '滤芯、机油等周期件该换了',
-          items: maintenanceDue,
-        ),
-      ].where((e) => e.items.isNotEmpty).toList();
+    InsightEntry(
+      id: 'missing_price',
+      title: '价格缺失',
+      description: '非礼物但价格为 0，日均成本会失真',
+      items: missingPrice,
+    ),
+    InsightEntry(
+      id: 'missing_location',
+      title: '未设存放位置',
+      description: '补全位置，找东西更快',
+      items: missingLocation,
+    ),
+    InsightEntry(
+      id: 'missing_image',
+      title: '没有照片',
+      description: '拍照留档，转卖和保修更方便',
+      items: missingImage,
+    ),
+    InsightEntry(
+      id: 'long_idle',
+      title: '长期闲置',
+      description: '考虑转卖回血或重新利用',
+      items: longIdle,
+    ),
+    InsightEntry(
+      id: 'expiring_warranty',
+      title: '保修将到期',
+      description: '到期前检查或送保',
+      items: expiringWarranty,
+    ),
+    InsightEntry(
+      id: 'maintenance_due',
+      title: '保养/耗材到期',
+      description: '滤芯、机油等周期件该换了',
+      items: maintenanceDue,
+    ),
+  ].where((e) => e.items.isNotEmpty).toList();
 }
 
 /// 体检计算：全部纯函数。
@@ -117,19 +117,22 @@ class ItemInsightService {
     final now_ = now ?? DateTime.now();
     final active = items.where((i) => !i.isDeleted).toList();
 
-    final missingPrice = active.where((i) =>
-        i.purchasePrice == 0 &&
-        i.status != ItemStatus.gifted &&
-        i.purchaseChannel != '礼物');
+    final missingPrice = active.where(
+      (i) =>
+          i.purchasePrice == 0 &&
+          i.status != ItemStatus.gifted &&
+          i.purchaseChannel != '礼物',
+    );
 
     final missingLocation = active.where((i) => i.locationId == null);
-    final missingImage =
-        active.where((i) => i.coverImagePath == null);
+    final missingImage = active.where((i) => i.coverImagePath == null);
 
-    final longIdle = active.where((i) =>
-        i.status == ItemStatus.idle &&
-        ItemCalculator.usedDays(i, sales[i.id], now: now_) >=
-            idleThresholdDays);
+    final longIdle = active.where(
+      (i) =>
+          i.status == ItemStatus.idle &&
+          ItemCalculator.usedDays(i, sales[i.id], now: now_) >=
+              idleThresholdDays,
+    );
 
     final expiringWarranty = active.where((i) {
       final state = ItemCalculator.warrantyState(i, now: now_);
@@ -138,9 +141,13 @@ class ItemInsightService {
     });
 
     final owned = active.where((i) => i.status.isOwned).toList()
-      ..sort((a, b) => ItemCalculator.dailyCost(b, sales[b.id], now: now_)
-          .compareTo(
-              ItemCalculator.dailyCost(a, sales[a.id], now: now_)));
+      ..sort(
+        (a, b) => ItemCalculator.dailyCost(
+          b,
+          sales[b.id],
+          now: now_,
+        ).compareTo(ItemCalculator.dailyCost(a, sales[a.id], now: now_)),
+      );
 
     final maintenanceDue = active.where((i) {
       if (!i.status.isOwned) return false;

@@ -13,7 +13,8 @@ class Fmt {
   /// 简短月份：25年3月。
   static String monthCn(DateTime d) => '${d.year % 100}年${d.month}月';
 
-  static String dateTime(DateTime d) => DateFormat('yyyy-MM-dd HH:mm').format(d);
+  static String dateTime(DateTime d) =>
+      DateFormat('yyyy-MM-dd HH:mm').format(d);
 
   /// 仅日期部分（去掉时分秒）。
   static DateTime dayOnly(DateTime d) => DateTime(d.year, d.month, d.day);

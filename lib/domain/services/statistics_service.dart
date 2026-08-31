@@ -12,6 +12,7 @@ class StatsOverview {
     required this.saleNetIncomeTotal,
     required this.historyDepreciationTotal,
     required this.avgDailyCost,
+    required this.sumDailyCost,
   });
 
   /// 历史记录物品数量（含已转卖/丢弃等）。
@@ -34,6 +35,9 @@ class StatsOverview {
 
   /// 当前持有物品的平均日均成本（分/天）。
   final double avgDailyCost;
+
+  /// 当前持有物品的日均成本之和（元/天）：每件物品当前日均相加。
+  final double sumDailyCost;
 }
 
 class CategoryStats {
@@ -57,8 +61,13 @@ class CategoryStats {
 }
 
 class MonthlyStats {
-  MonthlyStats(this.monthKey, this.newCount, this.purchaseTotal,
-      this.saleIncome, this.depreciation);
+  MonthlyStats(
+    this.monthKey,
+    this.newCount,
+    this.purchaseTotal,
+    this.saleIncome,
+    this.depreciation,
+  );
 
   final String monthKey; // yyyy-MM
   final int newCount;
@@ -126,6 +135,7 @@ class StatisticsService {
       saleNetIncomeTotal: saleIncome,
       historyDepreciationTotal: soldDepreciation,
       avgDailyCost: dailyCount == 0 ? 0 : dailySum / dailyCount,
+      sumDailyCost: dailySum,
     );
   }
 
@@ -148,15 +158,17 @@ class StatisticsService {
         total += item.purchasePrice;
         dailySum +=
             ItemCalculator.dailyCost(item, salesByItemId[item.id], now: now_) /
-                100;
+            100;
       }
-      result.add(CategoryStats(
-        categoryId: e.key,
-        categoryName: e.value.first.categoryName,
-        count: e.value.length,
-        purchaseTotal: total,
-        avgDailyCost: dailySum / e.value.length,
-      ));
+      result.add(
+        CategoryStats(
+          categoryId: e.key,
+          categoryName: e.value.first.categoryName,
+          count: e.value.length,
+          purchaseTotal: total,
+          avgDailyCost: dailySum / e.value.length,
+        ),
+      );
     }
     return result;
   }
@@ -172,7 +184,9 @@ class StatisticsService {
     final keys = <String>[];
     for (int i = months - 1; i >= 0; i--) {
       final d = DateTime(now_.year, now_.month - i);
-      keys.add('${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}');
+      keys.add(
+        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}',
+      );
     }
     final byMonth = {for (final k in keys) k: MonthlyStats(k, 0, 0, 0, 0)};
 
@@ -182,7 +196,15 @@ class StatisticsService {
     for (final item in items.where(inHistory)) {
       final k = keyOf(item.purchaseDate);
       final m = byMonth[k];
-      if (m != null) byMonth[k] = MonthlyStats(k, m.newCount + 1, m.purchaseTotal + item.purchasePrice, m.saleIncome, m.depreciation);
+      if (m != null) {
+        byMonth[k] = MonthlyStats(
+          k,
+          m.newCount + 1,
+          m.purchaseTotal + item.purchasePrice,
+          m.saleIncome,
+          m.depreciation,
+        );
+      }
     }
     for (final sale in salesByItemId.values) {
       final k = keyOf(sale.saleDate);
@@ -192,7 +214,13 @@ class StatisticsService {
         final dep = item == null
             ? 0
             : ItemCalculator.actualDepreciation(item, sale);
-        byMonth[k] = MonthlyStats(k, m.newCount, m.purchaseTotal, m.saleIncome + sale.netIncome, m.depreciation + dep);
+        byMonth[k] = MonthlyStats(
+          k,
+          m.newCount,
+          m.purchaseTotal,
+          m.saleIncome + sale.netIncome,
+          m.depreciation + dep,
+        );
       }
     }
     return keys.map((k) => byMonth[k]!).toList();
@@ -210,14 +238,20 @@ class StatisticsService {
     final list = items
         .where(inHistory)
         .where(isOwned)
-        .map((item) => ValueRanking(
-              item,
-              salesByItemId[item.id],
-              ItemCalculator.dailyCost(item, salesByItemId[item.id], now: now_),
-              0,
-            ))
+        .map(
+          (item) => ValueRanking(
+            item,
+            salesByItemId[item.id],
+            ItemCalculator.dailyCost(item, salesByItemId[item.id], now: now_),
+            0,
+          ),
+        )
         .toList();
-    list.sort((a, b) => descending ? b.dailyCost.compareTo(a.dailyCost) : a.dailyCost.compareTo(b.dailyCost));
+    list.sort(
+      (a, b) => descending
+          ? b.dailyCost.compareTo(a.dailyCost)
+          : a.dailyCost.compareTo(b.dailyCost),
+    );
     return list.take(limit).toList();
   }
 
@@ -230,8 +264,11 @@ class StatisticsService {
   }) {
     final now_ = now ?? DateTime.now();
     final list = items.where(inHistory).where(isOwned).map((item) {
-      final days =
-          ItemCalculator.usedDays(item, salesByItemId[item.id], now: now_);
+      final days = ItemCalculator.usedDays(
+        item,
+        salesByItemId[item.id],
+        now: now_,
+      );
       return ValueRanking(item, salesByItemId[item.id], 0, days.toDouble());
     }).toList();
     list.sort((a, b) => b.value.compareTo(a.value));

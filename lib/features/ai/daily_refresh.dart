@@ -17,8 +17,9 @@ class DailyDigest {
 
 /// 读取缓存的每日诊断。
 final dailyDigestProvider = FutureProvider<DailyDigest?>((ref) async {
-  final json =
-      await ref.watch(settingsRepoProvider).getJson('ai_daily_summary');
+  final json = await ref
+      .watch(settingsRepoProvider)
+      .getJson('ai_daily_summary');
   if (json == null) return null;
   final text = json['text'] as String?;
   if (text == null || text.isEmpty) return null;
@@ -74,16 +75,19 @@ Future<void> runDailyAiRefresh(WidgetRef ref, {bool force = false}) async {
       ref.read(salesMapProvider).valueOrNull ?? const <String, SaleRecord>{};
   if (items.where((i) => !i.isDeleted).isEmpty) return;
   final insights = ItemInsightService.analyze(
-      items.where((i) => !i.isDeleted).toList(), sales);
+    items.where((i) => !i.isDeleted).toList(),
+    sales,
+  );
 
   // 月度预算：所有洞察维度都能感知（未设置时为 null）。
   final monthStart = DateTime(now.year, now.month);
   final monthSpend = items
-      .where((i) =>
-          !i.isDeleted && !i.purchaseDate.isBefore(monthStart))
+      .where((i) => !i.isDeleted && !i.purchaseDate.isBefore(monthStart))
       .fold<int>(0, (sum, i) => sum + i.purchasePrice);
   final budget = BudgetStatus.evaluate(
-      monthSpend, ref.read(appSettingsProvider).monthlyBudgetCents);
+    monthSpend,
+    ref.read(appSettingsProvider).monthlyBudgetCents,
+  );
 
   _refreshing = true;
   ref.read(digestRefreshingProvider.notifier).state = true;
@@ -98,11 +102,18 @@ Future<void> runDailyAiRefresh(WidgetRef ref, {bool force = false}) async {
 
   Future<void> runOne(dim) async {
     try {
-      final text = await service.insightByDimension(dim.id, items, sales,
-          insights, budget: budget);
+      final text = await service.insightByDimension(
+        dim.id,
+        items,
+        sales,
+        insights,
+        budget: budget,
+      );
       texts[dim.title] = text;
-      await repo.setJson('ai_insight_v2_${dim.id}',
-          {'text': text, 'at': now.toIso8601String()});
+      await repo.setJson('ai_insight_v2_${dim.id}', {
+        'text': text,
+        'at': now.toIso8601String(),
+      });
     } catch (_) {
       // 单个维度失败不阻断整体。
     } finally {
@@ -133,7 +144,8 @@ Future<void> runDailyAiRefresh(WidgetRef ref, {bool force = false}) async {
           return d == null ? i.name : '${i.name}(${d.month}/${d.day})';
         })
         .join('、');
-    texts['数据体检'] = '价格缺失 ${insights.missingPrice.length} 件；'
+    texts['数据体检'] =
+        '价格缺失 ${insights.missingPrice.length} 件；'
         '未设位置 ${insights.missingLocation.length} 件；'
         '无照片 ${insights.missingImage.length} 件；'
         '长期闲置 ${insights.longIdle.length} 件；'
@@ -143,8 +155,10 @@ Future<void> runDailyAiRefresh(WidgetRef ref, {bool force = false}) async {
         '${insights.maintenanceDue.isEmpty ? '' : '（${insights.maintenanceDue.take(4).map((i) => i.name).join('、')}）'}。'
         '${_budgetLine(items, ref)}';
     final digest = await service.dailyDigest(texts);
-    await repo.setJson('ai_daily_summary',
-        {'text': digest, 'at': now.toIso8601String()});
+    await repo.setJson('ai_daily_summary', {
+      'text': digest,
+      'at': now.toIso8601String(),
+    });
   } catch (e) {
     ref.read(digestErrorProvider.notifier).state = '汇总失败：$e';
   } finally {
@@ -172,10 +186,9 @@ Future<void> _refreshAiTags(WidgetRef ref, List<Item> allItems) async {
       for (final item in batch) {
         final tags = tagsById[item.id];
         if (tags == null) continue;
-        await repo.updateItem(item.copyWith(
-          aiTags: tags,
-          aiTagsSourceName: item.name,
-        ));
+        await repo.updateItem(
+          item.copyWith(aiTags: tags, aiTagsSourceName: item.name),
+        );
       }
     } catch (_) {
       // 打标失败不影响诊断流程。
@@ -207,15 +220,19 @@ String currentWeekKey([DateTime? now]) {
 
 /// 读取缓存的周报（非本周返回 null）。
 final weeklyReportProvider = FutureProvider<WeeklyReportData?>((ref) async {
-  final json =
-      await ref.watch(settingsRepoProvider).getJson('ai_weekly_summary');
+  final json = await ref
+      .watch(settingsRepoProvider)
+      .getJson('ai_weekly_summary');
   if (json == null) return null;
   final text = json['text'] as String?;
   if (text == null || text.isEmpty) return null;
   if (json['week'] != currentWeekKey()) return null;
   final at = json['at'] as String?;
   return WeeklyReportData(
-      text, at == null ? null : DateTime.tryParse(at), json['week'] as String);
+    text,
+    at == null ? null : DateTime.tryParse(at),
+    json['week'] as String,
+  );
 });
 
 final weeklyRefreshingProvider = StateProvider<bool>((ref) => false);
@@ -244,8 +261,11 @@ Future<void> runWeeklyAiReport(WidgetRef ref, {bool force = false}) async {
   ref.read(weeklyErrorProvider.notifier).state = null;
   try {
     final text = await ref.read(aiServiceProvider).weeklyReport(items, sales);
-    await repo.setJson('ai_weekly_summary',
-        {'text': text, 'at': DateTime.now().toIso8601String(), 'week': week});
+    await repo.setJson('ai_weekly_summary', {
+      'text': text,
+      'at': DateTime.now().toIso8601String(),
+      'week': week,
+    });
   } catch (e) {
     ref.read(weeklyErrorProvider.notifier).state = '$e';
   } finally {

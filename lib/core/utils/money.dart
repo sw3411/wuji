@@ -25,9 +25,7 @@ class Money {
     final abs = minorUnits.abs();
     final yuan = abs ~/ 100;
     final fen = abs % 100;
-    final base = fen == 0
-        ? '$yuan'
-        : '$yuan.${fen.toString().padLeft(2, '0')}';
+    final base = fen == 0 ? '$yuan' : '$yuan.${fen.toString().padLeft(2, '0')}';
     return negative ? '-$base' : base;
   }
 
@@ -98,12 +96,18 @@ class Money {
   }
 
   /// 日均成本等场景：金额/天数。
-  static String formatDaily(int totalMinor, int days, {String currency = 'CNY'}) {
+  static String formatDaily(
+    int totalMinor,
+    int days, {
+    String currency = 'CNY',
+  }) {
     if (days <= 0) return format(0, currency: currency);
     final perDay = (totalMinor / days).round();
     return format(perDay, currency: currency);
   }
 
-  static NumberFormat formatter(String currency) =>
-      _formatters.putIfAbsent(currency, () => NumberFormat.currency(name: currency));
+  static NumberFormat formatter(String currency) => _formatters.putIfAbsent(
+    currency,
+    () => NumberFormat.currency(name: currency),
+  );
 }

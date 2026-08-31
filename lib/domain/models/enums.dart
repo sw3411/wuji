@@ -23,9 +23,9 @@ enum ItemStatus {
       this == ItemStatus.repairing;
 
   static ItemStatus fromName(String name) => ItemStatus.values.firstWhere(
-        (e) => e.name == name,
-        orElse: () => ItemStatus.inUse,
-      );
+    (e) => e.name == name,
+    orElse: () => ItemStatus.inUse,
+  );
 }
 
 /// 物品生命周期事件类型。
@@ -46,9 +46,9 @@ enum ItemEventType {
   final String label;
 
   static ItemEventType fromName(String name) => ItemEventType.values.firstWhere(
-        (e) => e.name == name,
-        orElse: () => ItemEventType.custom,
-      );
+    (e) => e.name == name,
+    orElse: () => ItemEventType.custom,
+  );
 }
 
 /// 购买渠道。首个为默认值。

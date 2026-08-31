@@ -33,8 +33,9 @@ class _YearlyReportPageState extends ConsumerState<YearlyReportPage> {
   }
 
   Future<void> _loadCached() async {
-    final json =
-        await ref.read(settingsRepoProvider).getJson('ai_yearly_$_year');
+    final json = await ref
+        .read(settingsRepoProvider)
+        .getJson('ai_yearly_$_year');
     if (json == null || !mounted) return;
     final text = json['text'] as String?;
     if (text != null && text.isNotEmpty) {
@@ -52,16 +53,16 @@ class _YearlyReportPageState extends ConsumerState<YearlyReportPage> {
       _error = null;
     });
     try {
-      final items =
-          ref.read(itemsProvider).valueOrNull ?? const <Item>[];
-      final sales = ref.read(salesMapProvider).valueOrNull ??
+      final items = ref.read(itemsProvider).valueOrNull ?? const <Item>[];
+      final sales =
+          ref.read(salesMapProvider).valueOrNull ??
           const <String, SaleRecord>{};
       final text = await ref
           .read(aiServiceProvider)
           .yearlyReport(items, sales, year: _year);
-      await ref
-          .read(settingsRepoProvider)
-          .setJson('ai_yearly_$_year', {'text': text});
+      await ref.read(settingsRepoProvider).setJson('ai_yearly_$_year', {
+        'text': text,
+      });
       if (mounted) {
         setState(() {
           _aiText = text;
@@ -110,10 +111,7 @@ class _YearlyReportPageState extends ConsumerState<YearlyReportPage> {
           // 年份切换
           Row(
             children: [
-              for (final y in [
-                DateTime.now().year,
-                DateTime.now().year - 1
-              ])
+              for (final y in [DateTime.now().year, DateTime.now().year - 1])
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
@@ -132,32 +130,14 @@ class _YearlyReportPageState extends ConsumerState<YearlyReportPage> {
           ),
           const SizedBox(height: 12),
 
-          // 英雄卡：年度总花费
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('$_year 年购买总额',
-                      style: AppTheme.label(cs.onSurfaceVariant)),
-                  const SizedBox(height: 8),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      d.newSpendCents == 0
-                          ? '0'
-                          : Money.format(d.newSpendCents, currency: currency),
-                      style:
-                          AppTheme.bigNumber(cs.primary, size: 36),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text('新增 ${d.newCount} 件物品',
-                      style: AppTheme.caption(cs.onSurfaceVariant)),
-                ],
-              ),
-            ),
+          // 场景卡：年度总花费（页面唯一渐变主视觉）。
+          SceneCard(
+            label: '$_year 年购买总额',
+            value: d.newSpendCents == 0
+                ? '0'
+                : Money.format(d.newSpendCents, currency: currency),
+            subLabel: '',
+            subValue: '新增 ${d.newCount} 件物品',
           ),
           const SizedBox(height: 10),
 
@@ -165,73 +145,92 @@ class _YearlyReportPageState extends ConsumerState<YearlyReportPage> {
           Row(
             children: [
               Expanded(
-                  child: _statTile(cs, '最贵一笔',
-                      d.topName == null ? '—' : d.topName!,
-                      sub: d.topPriceCents == null
-                          ? null
-                          : Money.formatCompact(d.topPriceCents!, currency: currency))),
+                child: _statTile(
+                  cs,
+                  '最贵一笔',
+                  d.topName == null ? '—' : d.topName!,
+                  sub: d.topPriceCents == null
+                      ? null
+                      : Money.formatCompact(
+                          d.topPriceCents!,
+                          currency: currency,
+                        ),
+                ),
+              ),
               const SizedBox(width: 10),
               Expanded(
-                  child: _statTile(cs, '转卖净回收',
-                      Money.formatCompact(d.saleIncomeCents, currency: currency),
-                      sub: '共 ${d.soldCount} 件')),
+                child: _statTile(
+                  cs,
+                  '转卖净回收',
+                  Money.formatCompact(d.saleIncomeCents, currency: currency),
+                  sub: '共 ${d.soldCount} 件',
+                ),
+              ),
               const SizedBox(width: 10),
               Expanded(
-                  child: _statTile(cs, '现已闲置',
-                      d.idleCount == 0 ? '0 件' : '${d.idleCount} 件',
-                      sub: d.idleCount == 0 ? '很克制' : '考虑处置')),
+                child: _statTile(
+                  cs,
+                  '现已闲置',
+                  d.idleCount == 0 ? '0 件' : '${d.idleCount} 件',
+                  sub: d.idleCount == 0 ? '很克制' : '考虑处置',
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
 
           // 月度柱状（简单文本柱）
-          if (d.monthMax > 0) Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('月度花费', style: AppTheme.label(cs.onSurfaceVariant)),
-                      const SizedBox(height: 10),
-                      for (var m = 0; m < 12; m++)
-                        if (d.monthlyCents[m] > 0)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Row(
-                              children: [
-                                SizedBox(
-                                  width: 30,
-                                  child: Text('${m + 1}月',
-                                      style: AppTheme.caption(
-                                          cs.onSurfaceVariant)),
+          if (d.monthMax > 0)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('月度花费', style: AppTheme.label(cs.onSurfaceVariant)),
+                    const SizedBox(height: 10),
+                    for (var m = 0; m < 12; m++)
+                      if (d.monthlyCents[m] > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 30,
+                                child: Text(
+                                  '${m + 1}月',
+                                  style: AppTheme.caption(cs.onSurfaceVariant),
                                 ),
-                                Expanded(
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(3),
-                                    child: LinearProgressIndicator(
-                                      value: d.monthlyCents[m] / d.monthMax,
-                                      minHeight: 8,
-                                      backgroundColor:
-                                          cs.surfaceContainerHighest,
-                                      color: cs.primary,
-                                    ),
+                              ),
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(3),
+                                  child: LinearProgressIndicator(
+                                    value: d.monthlyCents[m] / d.monthMax,
+                                    minHeight: 8,
+                                    backgroundColor: cs.surfaceContainerHighest,
+                                    color: cs.primary,
                                   ),
                                 ),
-                                SizedBox(
-                                  width: 64,
-                                  child: Text(
-                                    Money.formatCompact(d.monthlyCents[m], currency: currency),
-                                    textAlign: TextAlign.right,
-                                    style: AppTheme.caption(cs.onSurface),
+                              ),
+                              SizedBox(
+                                width: 64,
+                                child: Text(
+                                  Money.formatCompact(
+                                    d.monthlyCents[m],
+                                    currency: currency,
                                   ),
+                                  textAlign: TextAlign.right,
+                                  style: AppTheme.caption(cs.onSurface),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                    ],
-                  ),
+                        ),
+                  ],
                 ),
               ),
+            ),
           const SizedBox(height: 12),
 
           // AI 年度总结
@@ -243,10 +242,10 @@ class _YearlyReportPageState extends ConsumerState<YearlyReportPage> {
                   onPressed: _loading ? null : _generate,
                   icon: _loading
                       ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child:
-                              CircularProgressIndicator(strokeWidth: 2))
+                          width: 18,
+                          height: 18,
+                          child: Center(child: AiTypingDots(size: 5)),
+                        )
                       : const Icon(Icons.auto_awesome, size: 18),
                   label: Text(_loading ? '生成中…' : 'AI 年度总结'),
                 ),
@@ -260,11 +259,9 @@ class _YearlyReportPageState extends ConsumerState<YearlyReportPage> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.auto_awesome,
-                              size: 16, color: cs.primary),
+                          Icon(Icons.auto_awesome, size: 16, color: cs.primary),
                           const SizedBox(width: 6),
-                          Text('年度总结',
-                              style: AppTheme.cardTitle(cs.onSurface)),
+                          Text('年度总结', style: AppTheme.cardTitle(cs.onSurface)),
                           const Spacer(),
                           IconButton(
                             visualDensity: VisualDensity.compact,
@@ -286,8 +283,7 @@ class _YearlyReportPageState extends ConsumerState<YearlyReportPage> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text('生成失败：$_error',
-                    style: AppTheme.caption(cs.error)),
+                child: Text('生成失败：$_error', style: AppTheme.caption(cs.error)),
               ),
           ],
         ],
@@ -312,10 +308,12 @@ class _YearlyReportPageState extends ConsumerState<YearlyReportPage> {
             ),
             if (sub != null) ...[
               const SizedBox(height: 2),
-              Text(sub,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTheme.caption(cs.onSurfaceVariant)),
+              Text(
+                sub,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTheme.caption(cs.onSurfaceVariant),
+              ),
             ],
           ],
         ),
@@ -327,15 +325,16 @@ class _YearlyReportPageState extends ConsumerState<YearlyReportPage> {
 /// 年度本地数据（纯函数）。
 class _YearData {
   const _YearData(
-      this.newCount,
-      this.newSpendCents,
-      this.monthlyCents,
-      this.monthMax,
-      this.topName,
-      this.topPriceCents,
-      this.soldCount,
-      this.saleIncomeCents,
-      this.idleCount);
+    this.newCount,
+    this.newSpendCents,
+    this.monthlyCents,
+    this.monthMax,
+    this.topName,
+    this.topPriceCents,
+    this.soldCount,
+    this.saleIncomeCents,
+    this.idleCount,
+  );
 
   final int newCount;
   final int newSpendCents;
@@ -348,10 +347,12 @@ class _YearData {
   final int idleCount;
 
   static _YearData of(
-      List<Item> items, Map<String, SaleRecord> sales, int year) {
+    List<Item> items,
+    Map<String, SaleRecord> sales,
+    int year,
+  ) {
     final active = items.where((i) => !i.isDeleted).toList();
-    final inYear =
-        active.where((i) => i.purchaseDate.year == year).toList();
+    final inYear = active.where((i) => i.purchaseDate.year == year).toList();
     final monthly = List<int>.filled(12, 0);
     for (final i in inYear) {
       monthly[i.purchaseDate.month - 1] += i.purchasePrice;
@@ -359,10 +360,12 @@ class _YearData {
     final top = [...inYear]
       ..sort((a, b) => b.purchasePrice.compareTo(a.purchasePrice));
     final sold = active
-        .where((i) =>
-            i.status == ItemStatus.sold &&
-            sales[i.id] != null &&
-            sales[i.id]!.saleDate.year == year)
+        .where(
+          (i) =>
+              i.status == ItemStatus.sold &&
+              sales[i.id] != null &&
+              sales[i.id]!.saleDate.year == year,
+        )
         .toList();
     return _YearData(
       inYear.length,

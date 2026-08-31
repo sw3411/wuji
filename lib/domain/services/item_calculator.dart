@@ -101,8 +101,23 @@ class ItemCalculator {
 
   /// 品类刚需度：高成本 ≠ 不值（车贵但是刚需）。
   static NecessityLevel necessityOf(String categoryName) {
-    const necessary = ['家用', '电器', '厨房', '家具', '家装', '医疗', '健康',
-        '母婴', '食品', '手机', '电脑', '办公', '汽车', '工具', '宠物'];
+    const necessary = [
+      '家用',
+      '电器',
+      '厨房',
+      '家具',
+      '家装',
+      '医疗',
+      '健康',
+      '母婴',
+      '食品',
+      '手机',
+      '电脑',
+      '办公',
+      '汽车',
+      '工具',
+      '宠物',
+    ];
     const enjoyment = ['珠宝', '收藏', '玩具', '乐器'];
     for (final k in necessary) {
       if (categoryName.contains(k)) return NecessityLevel.necessary;
@@ -147,12 +162,13 @@ class ItemCalculator {
     final freqScore = (freq / 8).clamp(0.0, 1.0);
     final durationScore = (months / 12).clamp(0.0, 1.0);
     final necessityScore = necessity.factor;
-    final score = (costScore * 35 +
-            freqScore * 30 +
-            durationScore * 20 +
-            necessityScore * 15)
-        .round()
-        .clamp(0, 100);
+    final score =
+        (costScore * 35 +
+                freqScore * 30 +
+                durationScore * 20 +
+                necessityScore * 15)
+            .round()
+            .clamp(0, 100);
     return ValueAssessment(
       score: score,
       costPerUseCents: costPerUse(item, now: now),

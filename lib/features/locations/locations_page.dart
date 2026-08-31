@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/image_store.dart';
 import '../../app/providers.dart';
+import '../../core/constants/location_icons.dart';
 import '../../data/repositories/location_repository.dart';
 import '../../domain/models/item.dart';
 import '../../domain/models/location.dart';
@@ -52,7 +53,7 @@ class _LocationsPageState extends ConsumerState<LocationsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('存放位置'),
+        title: const Text('位置'),
         actions: [
           IconButton(
             tooltip: '盘点',
@@ -61,15 +62,60 @@ class _LocationsPageState extends ConsumerState<LocationsPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _editLocation(null),
-        icon: const Icon(Icons.add),
-        label: const Text('新增位置'),
+      floatingActionButton: Padding(
+        // 内层 Scaffold 的 FAB 会沉到外壳悬浮玻璃底导后面，抬高避开。
+        padding: const EdgeInsets.only(bottom: 86),
+        child: FloatingActionButton.extended(
+          onPressed: () => _editLocation(null),
+          icon: const Icon(Icons.add),
+          label: const Text('新增位置'),
+        ),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.home_work_outlined,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${locations.length} 个位置',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '按空间整理物品，也可以从这里开始盘点',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
             child: TextField(
               decoration: const InputDecoration(
                 hintText: '搜索位置',
@@ -87,28 +133,23 @@ class _LocationsPageState extends ConsumerState<LocationsPage> {
                     subtitle: '先创建“家”、“办公室”等位置，再逐步细化',
                   )
                 : ListView(
-                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 88),
+                    padding: const EdgeInsets.fromLTRB(16, 2, 16, 120),
                     children: rows.map((r) {
-                      final childCount =
-                          tree.childrenOf(r.loc.id).length;
+                      final childCount = tree.childrenOf(r.loc.id).length;
                       final itemCount = counts[r.loc.id] ?? 0;
                       return Padding(
-                        padding: EdgeInsets.only(left: 18.0 * r.depth),
+                        padding: EdgeInsets.fromLTRB(14.0 * r.depth, 0, 0, 6),
                         child: Card(
                           child: ListTile(
+                            visualDensity: VisualDensity.compact,
                             leading: r.loc.imagePath != null
-                                ? ItemImage(r.loc.imagePath,
+                                ? ItemImage(
+                                    r.loc.imagePath,
                                     icon: Icons.folder_outlined,
-                                    size: 40,
-                                    borderRadius: 8)
-                                : Icon(
-                                    childCount > 0
-                                        ? Icons.folder_outlined
-                                        : Icons.folder_open_outlined,
-                                    size: 28,
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                  ),
+                                    size: 36,
+                                    borderRadius: 9,
+                                  )
+                                : LocationIconBadge(r.loc.icon, size: 36),
                             title: Text(r.loc.name),
                             subtitle: Text(
                               '$itemCount 件物品'
@@ -116,19 +157,24 @@ class _LocationsPageState extends ConsumerState<LocationsPage> {
                               '${r.loc.description != null && r.loc.description!.isNotEmpty ? '\n${r.loc.description}' : ''}',
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12),
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
-                            isThreeLine:
-                                r.loc.description?.isNotEmpty == true,
+                            isThreeLine: r.loc.description?.isNotEmpty == true,
                             trailing: PopupMenuButton<String>(
                               onSelected: (v) => _onMenu(context, v, r.loc),
                               itemBuilder: (context) => [
                                 const PopupMenuItem(
-                                    value: 'edit', child: Text('编辑')),
+                                  value: 'edit',
+                                  child: Text('编辑'),
+                                ),
                                 const PopupMenuItem(
-                                    value: 'addChild', child: Text('添加子位置')),
+                                  value: 'addChild',
+                                  child: Text('添加子位置'),
+                                ),
                                 const PopupMenuItem(
-                                    value: 'delete', child: Text('删除')),
+                                  value: 'delete',
+                                  child: Text('删除'),
+                                ),
                               ],
                             ),
                             onTap: () => context.push('/locations/${r.loc.id}'),
@@ -158,26 +204,37 @@ class _LocationsPageState extends ConsumerState<LocationsPage> {
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
     String? imagePath = existing?.imagePath;
+    String? iconKey = existing?.icon;
 
     final saved = await showModalBottomSheet<bool>(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheet) => Padding(
           padding: EdgeInsets.only(
-            left: 16, right: 16, top: 8,
+            left: 16,
+            right: 16,
+            top: 8,
             bottom: MediaQuery.of(context).viewInsets.bottom + 16,
           ),
-          child: Column(
+          // 内容可滚动：图标网格加入后面板变高，小屏/键盘弹出时
+          // 保存按钮必须能滚到可见区（否则看似被底导压死）。
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(existing == null ? '新增位置' : '编辑位置',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                existing == null ? '新增位置' : '编辑位置',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               if (parentId != null) ...[
                 const SizedBox(height: 4),
-                Text('父位置：${LocationTree(ref.read(locationsProvider).valueOrNull ?? const []).fullPath(parentId)}',
-                    style: const TextStyle(fontSize: 12)),
+                Text(
+                  '父位置：${LocationTree(ref.read(locationsProvider).valueOrNull ?? const []).fullPath(parentId)}',
+                  style: const TextStyle(fontSize: 12),
+                ),
               ],
               const SizedBox(height: 12),
               TextField(
@@ -192,18 +249,64 @@ class _LocationsPageState extends ConsumerState<LocationsPage> {
                 decoration: const InputDecoration(labelText: '位置说明'),
               ),
               const SizedBox(height: 12),
+              // 图标选择：预置位置图标 + 名称自动推荐。
+              Text('图标', style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 138,
+                child: GridView.count(
+                  crossAxisCount: 6,
+                  mainAxisSpacing: 6,
+                  crossAxisSpacing: 6,
+                  childAspectRatio: 0.86,
+                  children: [
+                    for (final e in LocationIconSet.presets.entries)
+                      GestureDetector(
+                        onTap: () => setSheet(
+                            () => iconKey = e.key == iconKey ? null : e.key),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: iconKey == e.key
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Colors.transparent,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: const EdgeInsets.all(2),
+                              child: LocationIconBadge(e.key, size: 34),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(e.key,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 10)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   OutlinedButton.icon(
                     onPressed: () async {
                       final path = await ImageStore.pickFromGallery(
-                          maxCount: 1);
+                        maxCount: 1,
+                      );
                       if (path.isNotEmpty) {
                         setSheet(() => imagePath = path.first);
                       }
                     },
-                    icon: const Icon(Icons.add_photo_alternate_outlined,
-                        size: 18),
+                    icon: const Icon(
+                      Icons.add_photo_alternate_outlined,
+                      size: 18,
+                    ),
                     label: Text(imagePath == null ? '设置照片' : '已设置照片'),
                   ),
                   if (imagePath != null)
@@ -218,7 +321,26 @@ class _LocationsPageState extends ConsumerState<LocationsPage> {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () {
-                    if (nameCtrl.text.trim().isEmpty) return;
+                    final name = nameCtrl.text.trim();
+                    if (name.isEmpty) return;
+                    // 同级重名校验：同一父位置下不允许出现相同名称。
+                    final siblings = (ref
+                                .read(locationsProvider)
+                                .valueOrNull ??
+                            const <Location>[])
+                        .where((l) =>
+                            l.id != existing?.id &&
+                            l.parentId == (existing?.parentId ?? parentId) &&
+                            l.name == name)
+                        .toList();
+                    if (siblings.isNotEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(
+                                '同级已存在同名位置「$name」，请换个名称')),
+                      );
+                      return;
+                    }
                     Navigator.pop(context, true);
                   },
                   child: const Text('保存'),
@@ -226,26 +348,35 @@ class _LocationsPageState extends ConsumerState<LocationsPage> {
               ),
             ],
           ),
+          ),
         ),
       ),
     );
     if (saved != true) return;
 
-    await ref.read(locationRepoProvider).upsert(Location(
-          id: existing?.id ??
-              DateTime.now().microsecondsSinceEpoch.toString(),
-          name: nameCtrl.text.trim(),
-          parentId: existing?.parentId ?? parentId,
-          description:
-              descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
-          imagePath: imagePath,
-          sortOrder: existing?.sortOrder ?? 0,
-          createdAt: existing?.createdAt ?? DateTime.now(),
-          updatedAt: DateTime.now(),
-        ));
+    await ref
+        .read(locationRepoProvider)
+        .upsert(
+          Location(
+            id:
+                existing?.id ??
+                DateTime.now().microsecondsSinceEpoch.toString(),
+            name: nameCtrl.text.trim(),
+            parentId: existing?.parentId ?? parentId,
+            description: descCtrl.text.trim().isEmpty
+                ? null
+                : descCtrl.text.trim(),
+            imagePath: imagePath,
+            icon: iconKey ?? LocationIconSet.suggest(nameCtrl.text.trim()),
+            sortOrder: existing?.sortOrder ?? 0,
+            createdAt: existing?.createdAt ?? DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(existing == null ? '位置已创建' : '位置已更新')));
+        SnackBar(content: Text(existing == null ? '位置已创建' : '位置已更新')),
+      );
     }
   }
 
@@ -256,8 +387,9 @@ class _LocationsPageState extends ConsumerState<LocationsPage> {
     final tree = LocationTree(locations);
 
     final childLocations = tree.childrenOf(loc.id);
-    final childItems =
-        items.where((i) => !i.isDeleted && i.locationId == loc.id).toList();
+    final childItems = items
+        .where((i) => !i.isDeleted && i.locationId == loc.id)
+        .toList();
 
     if (childLocations.isEmpty && childItems.isEmpty) {
       final ok = await showDialog<bool>(
@@ -267,11 +399,13 @@ class _LocationsPageState extends ConsumerState<LocationsPage> {
           content: Text('确定删除「${loc.name}」？'),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('取消')),
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('删除')),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('删除'),
+            ),
           ],
         ),
       );
@@ -301,8 +435,9 @@ class _LocationsPageState extends ConsumerState<LocationsPage> {
         await ref.read(locationRepoProvider).delete(id);
       }
       for (final item in childItems) {
-        await ref.read(itemRepoProvider).updateItem(
-            item.copyWith(clearLocation: true));
+        await ref
+            .read(itemRepoProvider)
+            .updateItem(item.copyWith(clearLocation: true));
       }
     } else if (migrateTo == '__none__') {
       await ref.read(locationRepoProvider).delete(loc.id);
@@ -312,25 +447,36 @@ class _LocationsPageState extends ConsumerState<LocationsPage> {
             .updateItem(item.copyWith(clearLocation: true));
       }
       for (final child in childLocations) {
-        await ref.read(locationRepoProvider).upsert(
-            child.copyWith(parentId: loc.parentId, clearParent: loc.parentId == null));
+        await ref
+            .read(locationRepoProvider)
+            .upsert(
+              child.copyWith(
+                parentId: loc.parentId,
+                clearParent: loc.parentId == null,
+              ),
+            );
       }
     } else {
       // 迁移到目标位置。
-      final target =
-          locations.where((l) => l.id == migrateTo).firstOrNull!;
+      final target = locations.where((l) => l.id == migrateTo).firstOrNull!;
       for (final item in childItems) {
-        await ref.read(itemRepoProvider).updateItem(item.copyWith(
-            locationId: target.id, locationName: target.name));
+        await ref
+            .read(itemRepoProvider)
+            .updateItem(
+              item.copyWith(locationId: target.id, locationName: target.name),
+            );
       }
       for (final child in childLocations) {
-        await ref.read(locationRepoProvider).upsert(child.copyWith(parentId: target.id));
+        await ref
+            .read(locationRepoProvider)
+            .upsert(child.copyWith(parentId: target.id));
       }
       await ref.read(locationRepoProvider).delete(loc.id);
     }
     if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('位置已删除')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('位置已删除')));
     }
   }
 }
@@ -371,19 +517,23 @@ class _MigrateDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('该位置包含 $childCount 件物品'
-              '${subCount > 0 ? '、$subCount 个子位置' : ''}，'
-              '删除前需要处理这些内容。'),
+          Text(
+            '该位置包含 $childCount 件物品'
+            '${subCount > 0 ? '、$subCount 个子位置' : ''}，'
+            '删除前需要处理这些内容。',
+          ),
           const SizedBox(height: 12),
           const Text('迁移到：', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
-          ...candidates.map((l) => RadioListTile<String>(
-                value: l.id,
-                groupValue: null,
-                dense: true,
-                title: Text(tree.fullPath(l.id)),
-                onChanged: (v) => Navigator.pop(context, v),
-              )),
+          ...candidates.map(
+            (l) => RadioListTile<String>(
+              value: l.id,
+              groupValue: null,
+              dense: true,
+              title: Text(tree.fullPath(l.id)),
+              onChanged: (v) => Navigator.pop(context, v),
+            ),
+          ),
           RadioListTile<String>(
             value: '__none__',
             groupValue: null,

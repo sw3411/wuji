@@ -22,13 +22,9 @@ class AiChatPage extends ConsumerStatefulWidget {
 }
 
 class _ChatMsg {
-  _ChatMsg.user(this.text)
-      : isUser = true,
-        time = DateTime.now();
+  _ChatMsg.user(this.text) : isUser = true, time = DateTime.now();
 
-  _ChatMsg.assistant(this.text)
-      : isUser = false,
-        time = DateTime.now();
+  _ChatMsg.assistant(this.text) : isUser = false, time = DateTime.now();
 
   _ChatMsg._(this.text, this.isUser, this.time);
 
@@ -36,15 +32,21 @@ class _ChatMsg {
   final bool isUser;
   final DateTime time;
 
-  Map<String, dynamic> toJson() =>
-      {'t': text, 'u': isUser, 'at': time.toIso8601String()};
+  Map<String, dynamic> toJson() => {
+    't': text,
+    'u': isUser,
+    'at': time.toIso8601String(),
+  };
 
   static _ChatMsg? fromJson(Map<String, dynamic> json) {
     final text = json['t'] as String?;
     if (text == null) return null;
     final at = DateTime.tryParse(json['at'] as String? ?? '');
-    return _ChatMsg._(text, json['u'] as bool? ?? false,
-        at ?? DateTime.fromMillisecondsSinceEpoch(0));
+    return _ChatMsg._(
+      text,
+      json['u'] as bool? ?? false,
+      at ?? DateTime.fromMillisecondsSinceEpoch(0),
+    );
   }
 }
 
@@ -77,8 +79,9 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
 
   /// 最多持久化最近 60 条。
   Future<void> _saveHistory() async {
-    final tail =
-        _messages.length > 60 ? _messages.sublist(_messages.length - 60) : _messages;
+    final tail = _messages.length > 60
+        ? _messages.sublist(_messages.length - 60)
+        : _messages;
     await ref.read(settingsRepoProvider).setJson(_historyKey, {
       'messages': tail.map((m) => m.toJson()).toList(),
     });
@@ -94,11 +97,13 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
               content: const Text('当前对话将被清空，开始新的会话。'),
               actions: [
                 TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('取消')),
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('取消'),
+                ),
                 FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('开始新会话')),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('开始新会话'),
+                ),
               ],
             ),
           );
@@ -134,27 +139,27 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
   }
 
   Future<void> _summarize() async {
-    final items =
-        ref.read(itemsProvider).valueOrNull ?? const <Item>[];
-    final sales = ref
-            .read(salesMapProvider)
-            .valueOrNull ??
-        const <String, SaleRecord>{};
-    await _run('总结一下我的物品和开支',
-        () => ref.read(aiServiceProvider).summarize(items, sales));
+    final items = ref.read(itemsProvider).valueOrNull ?? const <Item>[];
+    final sales =
+        ref.read(salesMapProvider).valueOrNull ?? const <String, SaleRecord>{};
+    await _run(
+      '总结一下我的物品和开支',
+      () => ref.read(aiServiceProvider).summarize(items, sales),
+    );
   }
 
   Future<void> _ask(String question) async {
-    final items =
-        ref.read(itemsProvider).valueOrNull ?? const <Item>[];
+    final items = ref.read(itemsProvider).valueOrNull ?? const <Item>[];
     final history = _messages
         .map((m) => AiMessage(m.isUser ? 'user' : 'assistant', m.text))
         .toList();
-    final sales = ref.read(salesMapProvider).valueOrNull ??
-        const <String, SaleRecord>{};
+    final sales =
+        ref.read(salesMapProvider).valueOrNull ?? const <String, SaleRecord>{};
     await _run(
       question,
-      () => ref.read(aiServiceProvider).chatQuery(
+      () => ref
+          .read(aiServiceProvider)
+          .chatQuery(
             question,
             items,
             history: history,
@@ -169,10 +174,11 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
 
   /// AI 写操作工具的本地执行：确认弹窗 → 仓库写入 → 返回结果文本给 AI。
   Future<String> _executeAction(
-      String toolName, Map<String, dynamic> args) async {
+    String toolName,
+    Map<String, dynamic> args,
+  ) async {
     final repo = ref.read(itemRepoProvider);
-    final items =
-        ref.read(itemsProvider).valueOrNull ?? const <Item>[];
+    final items = ref.read(itemsProvider).valueOrNull ?? const <Item>[];
     final id = args['itemId']?.toString();
     final item = items.where((i) => i.id == id).firstOrNull;
     if (item == null) {
@@ -203,9 +209,7 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
     if (locationName != null) {
       final locations =
           ref.read(locationsProvider).valueOrNull ?? const <Location>[];
-      loc = locations
-          .where((l) => l.name == locationName.trim())
-          .firstOrNull;
+      loc = locations.where((l) => l.name == locationName.trim()).firstOrNull;
       if (loc == null) {
         return '位置「$locationName」不存在，请先在位置管理中创建，或使用已有位置名。';
       }
@@ -220,12 +224,14 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
     if (!mounted) return '页面已退出，操作未执行。';
     if (ok != true) return '用户取消了修改操作。';
 
-    await repo.updateItem(item.copyWith(
-      status: status,
-      locationId: loc?.id,
-      locationName: loc?.name,
-      notes: notes,
-    ));
+    await repo.updateItem(
+      item.copyWith(
+        status: status,
+        locationId: loc?.id,
+        locationName: loc?.name,
+        notes: notes,
+      ),
+    );
     return '已修改「${item.name}」：$changes。';
   }
 
@@ -246,11 +252,13 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
         content: Text(content),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('确认')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('确认'),
+          ),
         ],
       ),
     );
@@ -258,15 +266,14 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
 
   /// 从最近一条 AI 回答里找出被点名的物品名（按名称长度降序匹配，避免子串误命中）。
   List<String> _subjectHints(List<Item> items) {
-    final lastAssistant = _messages
-        .lastWhereOrNull((m) => !m.isUser)
-        ?.text;
+    final lastAssistant = _messages.lastWhereOrNull((m) => !m.isUser)?.text;
     if (lastAssistant == null) return const [];
-    final names = items
-        .where((i) => !i.isDeleted && i.name.length >= 2)
-        .map((i) => i.name)
-        .toList()
-      ..sort((a, b) => b.length.compareTo(a.length));
+    final names =
+        items
+            .where((i) => !i.isDeleted && i.name.length >= 2)
+            .map((i) => i.name)
+            .toList()
+          ..sort((a, b) => b.length.compareTo(a.length));
     final hits = <String>[];
     for (final name in names) {
       if (hits.length >= 3) break;
@@ -289,8 +296,11 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
       setState(() => _messages.add(_ChatMsg.assistant(reply)));
       await _saveHistory();
     } catch (e) {
-      setState(() => _messages.add(
-          _ChatMsg.assistant('出错了：$e\n\n如果是未配置，请先到「我的 → AI 助手设置」完成配置。')));
+      setState(
+        () => _messages.add(
+          _ChatMsg.assistant('出错了：$e\n\n如果是未配置，请先到「我的 → AI 助手设置」完成配置。'),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
       _scrollToBottom();
@@ -353,16 +363,20 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
                                   ? Container(
                                       margin: const EdgeInsets.only(bottom: 12),
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 10),
+                                        horizontal: 16,
+                                        vertical: 10,
+                                      ),
                                       constraints: BoxConstraints(
-                                          maxWidth:
-                                              MediaQuery.of(context).size.width *
-                                                  0.8),
+                                        maxWidth:
+                                            MediaQuery.of(context).size.width *
+                                            0.8,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).brightness ==
+                                        color:
+                                            Theme.of(context).brightness ==
                                                 Brightness.light
-                                            ? AppTheme.lightSurface
-                                            : AppTheme.darkSurfaceAlt,
+                                            ? AppTheme.aiBubbleOther
+                                            : AppTheme.aiBubbleOther,
                                         // 尾角收小：消息流的方向感。
                                         borderRadius: const BorderRadius.only(
                                           topLeft: Radius.circular(18),
@@ -377,44 +391,47 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
                                           fontSize: 14,
                                           height: 1.5,
                                           // 深色气泡配浅字，修复深底深字不可读。
-                                          color: Theme.of(context).brightness ==
+                                          color:
+                                              Theme.of(context).brightness ==
                                                   Brightness.light
                                               ? AppTheme.ink
-                                              : const Color(0xFFE9EDEF),
+                                              : AppTheme.darkOnSurface,
                                         ),
                                       ),
                                     )
                                   : Container(
                                       margin: const EdgeInsets.only(bottom: 14),
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 4),
+                                        horizontal: 4,
+                                      ),
                                       child: MarkdownBody(
                                         data: m.text,
                                         selectable: true,
-                                        styleSheet: MarkdownStyleSheet.fromTheme(
-                                                Theme.of(context))
-                                            .copyWith(
-                                          p: TextStyle(
-                                            fontSize: 14.5,
-                                            height: 1.7,
-                                            color: cs.onSurface,
-                                          ),
-                                          listBullet: TextStyle(
-                                            fontSize: 14.5,
-                                            color: cs.onSurface,
-                                          ),
-                                          h2: TextStyle(
-                                            fontSize: 15.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: cs.onSurface,
-                                          ),
-                                          code: TextStyle(
-                                            fontSize: 13,
-                                            backgroundColor: cs
-                                                .surfaceContainerHighest
-                                                .withValues(alpha: 0.6),
-                                          ),
-                                        ),
+                                        styleSheet:
+                                            MarkdownStyleSheet.fromTheme(
+                                              Theme.of(context),
+                                            ).copyWith(
+                                              p: TextStyle(
+                                                fontSize: 14.5,
+                                                height: 1.7,
+                                                color: cs.onSurface,
+                                              ),
+                                              listBullet: TextStyle(
+                                                fontSize: 14.5,
+                                                color: cs.onSurface,
+                                              ),
+                                              h2: TextStyle(
+                                                fontSize: 15.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: cs.onSurface,
+                                              ),
+                                              code: TextStyle(
+                                                fontSize: 13,
+                                                backgroundColor: cs
+                                                    .surfaceContainerHighest
+                                                    .withValues(alpha: 0.6),
+                                              ),
+                                            ),
                                       ),
                                     ),
                             );
@@ -432,17 +449,21 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
                             child: ListView(
                               scrollDirection: Axis.horizontal,
                               children: _quickQuestions
-                                  .map((q) => Padding(
-                                        padding:
-                                            const EdgeInsets.only(right: 8),
-                                        child: ActionChip(
-                                          label: Text(q, style: const TextStyle(fontSize: 12)),
-                                          onPressed: () {
-                                            _ctrl.text = q;
-                                            _ask(q);
-                                          },
+                                  .map(
+                                    (q) => Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: ActionChip(
+                                        label: Text(
+                                          q,
+                                          style: const TextStyle(fontSize: 12),
                                         ),
-                                      ))
+                                        onPressed: () {
+                                          _ctrl.text = q;
+                                          _ask(q);
+                                        },
+                                      ),
+                                    ),
+                                  )
                                   .toList(),
                             ),
                           ),
@@ -462,8 +483,9 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
                                 decoration: InputDecoration(
                                   hintText: '问问你的物品，例如：我最近买了什么？',
                                   isDense: true,
-                                  fillColor:
-                                      Theme.of(context).colorScheme.surface,
+                                  fillColor: Theme.of(
+                                    context,
+                                  ).colorScheme.surface,
                                   suffixIcon: IconButton(
                                     icon: const Icon(Icons.send_outlined),
                                     onPressed: _loading
@@ -491,17 +513,23 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.auto_awesome_outlined,
-                size: 48, color: Theme.of(context).colorScheme.primary),
+            Icon(
+              Icons.auto_awesome_outlined,
+              size: 48,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(height: 16),
-            const Text('问我任何关于物品的问题',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const Text(
+              '问我任何关于物品的问题',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             Text(
               '总结开支 · 查找物品 · 分析消费习惯',
               style: TextStyle(
-                  fontSize: 13,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -518,8 +546,10 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
           children: [
             const Icon(Icons.auto_awesome_outlined, size: 56),
             const SizedBox(height: 16),
-            const Text('AI 功能未配置',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const Text(
+              'AI 功能未配置',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             const Text(
               '配置 API 后可以总结物品开支、用自然语言查询物品',
@@ -538,7 +568,6 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
   }
 }
 
-
 /// 生成中的三点跳动动效。
 class _TypingDots extends StatefulWidget {
   const _TypingDots();
@@ -549,9 +578,10 @@ class _TypingDots extends StatefulWidget {
 
 class _TypingDotsState extends State<_TypingDots>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
-        ..repeat();
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
 
   @override
   void dispose() {
@@ -574,8 +604,11 @@ class _TypingDotsState extends State<_TypingDots>
               padding: const EdgeInsets.symmetric(horizontal: 3),
               child: Transform.translate(
                 offset: Offset(0, -4 * bounce),
-                child: Icon(Icons.circle,
-                    size: 8, color: color.withValues(alpha: 0.4 + 0.6 * bounce)),
+                child: Icon(
+                  Icons.circle,
+                  size: 8,
+                  color: color.withValues(alpha: 0.4 + 0.6 * bounce),
+                ),
               ),
             );
           }),

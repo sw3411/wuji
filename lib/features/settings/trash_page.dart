@@ -42,10 +42,7 @@ class _TrashPageState extends ConsumerState<TrashPage> {
       appBar: AppBar(
         title: const Text('回收站'),
         actions: [
-          TextButton(
-            onPressed: () => _empty(context),
-            child: const Text('清空'),
-          ),
+          TextButton(onPressed: () => _empty(context), child: const Text('清空')),
         ],
       ),
       body: FutureBuilder<List<Item>>(
@@ -63,7 +60,8 @@ class _TrashPageState extends ConsumerState<TrashPage> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: items.map((item) {
-              final leftDays = retainDays -
+              final leftDays =
+                  retainDays -
                   DateTime.now().difference(item.deletedAt!).inDays;
               return Card(
                 child: ListTile(
@@ -91,14 +89,18 @@ class _TrashPageState extends ConsumerState<TrashPage> {
                           _reload();
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('已恢复')));
+                              const SnackBar(content: Text('已恢复')),
+                            );
                           }
                         },
                       ),
                       IconButton(
                         tooltip: '永久删除',
-                        icon: Icon(Icons.delete_forever,
-                            size: 20, color: Theme.of(context).colorScheme.error),
+                        icon: Icon(
+                          Icons.delete_forever,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                         onPressed: () => _hardDelete(context, item.id),
                       ),
                     ],
@@ -119,12 +121,17 @@ class _TrashPageState extends ConsumerState<TrashPage> {
         title: const Text('永久删除'),
         content: const Text('永久删除后无法恢复，确定继续？'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
           FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.error),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('永久删除')),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('永久删除'),
+          ),
         ],
       ),
     );
@@ -141,12 +148,17 @@ class _TrashPageState extends ConsumerState<TrashPage> {
         title: const Text('清空回收站'),
         content: const Text('将永久删除回收站中的所有物品，无法恢复。'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
           FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.error),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('清空')),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('清空'),
+          ),
         ],
       ),
     );

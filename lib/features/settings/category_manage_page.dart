@@ -40,9 +40,10 @@ class CategoryManagePage extends ConsumerWidget {
               title: Text(
                 c.name,
                 style: TextStyle(
-                    color: c.isHidden
-                        ? Theme.of(context).colorScheme.outline
-                        : null),
+                  color: c.isHidden
+                      ? Theme.of(context).colorScheme.outline
+                      : null,
+                ),
               ),
               subtitle: Text(
                 c.isSystem ? '系统分类 · ${c.isHidden ? '已隐藏' : '可选'}' : '自定义',
@@ -55,10 +56,11 @@ class CategoryManagePage extends ConsumerWidget {
                     IconButton(
                       tooltip: c.isHidden ? '显示' : '隐藏',
                       icon: Icon(
-                          c.isHidden
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          size: 20),
+                        c.isHidden
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        size: 20,
+                      ),
                       onPressed: () => ref
                           .read(categoryRepoProvider)
                           .setHidden(c.id, !c.isHidden),
@@ -72,8 +74,11 @@ class CategoryManagePage extends ConsumerWidget {
                   if (!c.isSystem)
                     IconButton(
                       tooltip: '删除',
-                      icon: Icon(Icons.delete_outline,
-                          size: 20, color: Theme.of(context).colorScheme.error),
+                      icon: Icon(
+                        Icons.delete_outline,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                       onPressed: () => _delete(context, ref, c),
                     ),
                 ],
@@ -86,26 +91,34 @@ class CategoryManagePage extends ConsumerWidget {
   }
 
   Future<void> _edit(
-      BuildContext context, WidgetRef ref, Category? existing) async {
+    BuildContext context,
+    WidgetRef ref,
+    Category? existing,
+  ) async {
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     var icon = existing?.icon ?? 'category';
     var color = existing?.colorValue ?? 0xFF2E6E5C;
 
     final saved = await showModalBottomSheet<bool>(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheet) => Padding(
           padding: EdgeInsets.only(
-            left: 16, right: 16, top: 8,
+            left: 16,
+            right: 16,
+            top: 8,
             bottom: MediaQuery.of(context).viewInsets.bottom + 16,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(existing == null ? '新建分类' : '编辑分类',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                existing == null ? '新建分类' : '编辑分类',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: nameCtrl,
@@ -143,26 +156,33 @@ class CategoryManagePage extends ConsumerWidget {
               const Text('颜色'),
               Wrap(
                 spacing: 8,
-                children: [
-                  0xFF2E6E5C, 0xFF4A6FA5, 0xFFB8860B, 0xFF8D6E9C,
-                  0xFF7E93AC, 0xFFC08368, 0xFFA57F92, 0xFF6F6E69,
-                ].map((v) {
-                  final selected = color == v;
-                  return GestureDetector(
-                    onTap: () => setSheet(() => color = v),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Color(v),
-                        shape: BoxShape.circle,
-                        border: selected
-                            ? Border.all(color: Colors.black87, width: 3)
-                            : null,
-                      ),
-                    ),
-                  );
-                }).toList(),
+                children:
+                    [
+                      0xFFC0765A,
+                      0xFF93A88C,
+                      0xFFC4A265,
+                      0xFF7FA0B5,
+                      0xFFC79191,
+                      0xFFA78FAD,
+                      0xFF9BA182,
+                      0xFFB3A48F,
+                    ].map((v) {
+                      final selected = color == v;
+                      return GestureDetector(
+                        onTap: () => setSheet(() => color = v),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Color(v),
+                            shape: BoxShape.circle,
+                            border: selected
+                                ? Border.all(color: Colors.black87, width: 3)
+                                : null,
+                          ),
+                        ),
+                      );
+                    }).toList(),
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -182,27 +202,32 @@ class CategoryManagePage extends ConsumerWidget {
     );
     if (saved != true) return;
 
-    await ref.read(categoryRepoProvider).upsert(Category(
-          id: existing?.id ??
-              'custom_${DateTime.now().millisecondsSinceEpoch}',
-          name: nameCtrl.text.trim(),
-          icon: icon,
-          colorValue: color,
-          sortOrder: existing?.sortOrder ?? 99,
-          isSystem: false,
-        ));
+    await ref
+        .read(categoryRepoProvider)
+        .upsert(
+          Category(
+            id:
+                existing?.id ??
+                'custom_${DateTime.now().millisecondsSinceEpoch}',
+            name: nameCtrl.text.trim(),
+            icon: icon,
+            colorValue: color,
+            sortOrder: existing?.sortOrder ?? 99,
+            isSystem: false,
+          ),
+        );
   }
 
-  Future<void> _delete(
-      BuildContext context, WidgetRef ref, Category c) async {
+  Future<void> _delete(BuildContext context, WidgetRef ref, Category c) async {
     final items = await ref.read(itemRepoProvider).getAll();
-    final usedCount =
-        items.where((i) => i.categoryId == c.id && !i.isDeleted).length;
+    final usedCount = items
+        .where((i) => i.categoryId == c.id && !i.isDeleted)
+        .length;
     if (usedCount > 0) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text('仍有 $usedCount 件物品使用该分类，请先在物品中修改分类')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('仍有 $usedCount 件物品使用该分类，请先在物品中修改分类')),
+      );
       return;
     }
     if (!context.mounted) return;
@@ -212,16 +237,23 @@ class CategoryManagePage extends ConsumerWidget {
         title: const Text('删除分类'),
         content: Text('确定删除「${c.name}」？'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('删除')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('删除'),
+          ),
         ],
       ),
     );
     if (ok == true) {
       final deleted = await ref.read(categoryRepoProvider).delete(c.id);
       if (!deleted && context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('系统分类不能删除，只能隐藏')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('系统分类不能删除，只能隐藏')));
       }
     }
   }

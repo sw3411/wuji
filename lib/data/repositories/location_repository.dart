@@ -9,9 +9,10 @@ class LocationRepository {
 
   final AppDatabase _db;
 
-  Stream<List<Location>> watchAll() =>
-      _db.select(_db.locations).watch().map(
-          (rows) => rows.map(AppDatabase.toLocation).toList());
+  Stream<List<Location>> watchAll() => _db
+      .select(_db.locations)
+      .watch()
+      .map((rows) => rows.map(AppDatabase.toLocation).toList());
 
   Future<List<Location>> getAll() async {
     final rows = await _db.select(_db.locations).get();
@@ -19,23 +20,28 @@ class LocationRepository {
   }
 
   Future<Location?> getById(String id) async {
-    final rows = await (_db.select(_db.locations)
-          ..where((t) => t.id.equals(id)))
-        .get();
+    final rows = await (_db.select(
+      _db.locations,
+    )..where((t) => t.id.equals(id))).get();
     return rows.isEmpty ? null : AppDatabase.toLocation(rows.first);
   }
 
   Future<void> upsert(Location loc) async {
-    await _db.into(_db.locations).insertOnConflictUpdate(LocationsCompanion(
-          id: Value(loc.id),
-          name: Value(loc.name),
-          parentId: Value(loc.parentId),
-          description: Value(loc.description),
-          imagePath: Value(loc.imagePath),
-          sortOrder: Value(loc.sortOrder),
-          createdAt: Value(loc.createdAt),
-          updatedAt: Value(loc.updatedAt),
-        ));
+    await _db
+        .into(_db.locations)
+        .insertOnConflictUpdate(
+          LocationsCompanion(
+            id: Value(loc.id),
+            name: Value(loc.name),
+            parentId: Value(loc.parentId),
+            description: Value(loc.description),
+            imagePath: Value(loc.imagePath),
+            icon: Value(loc.icon),
+            sortOrder: Value(loc.sortOrder),
+            createdAt: Value(loc.createdAt),
+            updatedAt: Value(loc.updatedAt),
+          ),
+        );
   }
 
   Future<void> delete(String id) async {
@@ -43,7 +49,11 @@ class LocationRepository {
   }
 
   /// 判断位置是否仍包含物品或子位置。
-  Future<bool> hasChildren(String id, List<Location> all, List<String> usedLocationIds) async {
+  Future<bool> hasChildren(
+    String id,
+    List<Location> all,
+    List<String> usedLocationIds,
+  ) async {
     return all.any((l) => l.parentId == id) || usedLocationIds.contains(id);
   }
 }
@@ -79,7 +89,9 @@ class LocationTree {
     while (changed) {
       changed = false;
       for (final l in all) {
-        if (l.parentId != null && result.contains(l.parentId) && !result.contains(l.id)) {
+        if (l.parentId != null &&
+            result.contains(l.parentId) &&
+            !result.contains(l.id)) {
           result.add(l.id);
           changed = true;
         }
@@ -89,13 +101,12 @@ class LocationTree {
   }
 
   /// 直接子位置。
-  List<Location> childrenOf(String? parentId) => all
-      .where((l) => l.parentId == parentId)
-      .toList()
-    ..sort((a, b) =>
-        a.sortOrder.compareTo(b.sortOrder) == 0
+  List<Location> childrenOf(String? parentId) =>
+      all.where((l) => l.parentId == parentId).toList()..sort(
+        (a, b) => a.sortOrder.compareTo(b.sortOrder) == 0
             ? a.createdAt.compareTo(b.createdAt)
-            : a.sortOrder.compareTo(b.sortOrder));
+            : a.sortOrder.compareTo(b.sortOrder),
+      );
 
   /// 顶级位置。
   List<Location> get roots => childrenOf(null);
@@ -104,6 +115,8 @@ class LocationTree {
   List<Location> search(String query) {
     final q = query.trim();
     if (q.isEmpty) return all;
-    return all.where((l) => l.name.contains(q) || (l.description ?? '').contains(q)).toList();
+    return all
+        .where((l) => l.name.contains(q) || (l.description ?? '').contains(q))
+        .toList();
   }
 }

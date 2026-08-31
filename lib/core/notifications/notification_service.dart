@@ -23,7 +23,8 @@ class NotificationService {
       requestSoundPermission: false,
     );
     final ok = await _plugin.initialize(
-        const InitializationSettings(android: android, iOS: ios));
+      const InitializationSettings(android: android, iOS: ios),
+    );
     _initialized = ok ?? false;
     return _initialized;
   }
@@ -32,14 +33,18 @@ class NotificationService {
   static Future<bool> requestPermission() async {
     final ready = await initialize();
     if (!ready) return false;
-    final ios = _plugin.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
     if (ios != null) {
       final granted = await ios.requestPermissions(alert: true, badge: true);
       return granted ?? false;
     }
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android != null) {
       return await android.areNotificationsEnabled() ?? false;
     }
@@ -50,14 +55,18 @@ class NotificationService {
   static Future<bool> isPermissionGranted() async {
     final ready = await initialize();
     if (!ready) return false;
-    final ios = _plugin.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
     if (ios != null) {
       final permissions = await ios.checkPermissions();
       return permissions?.isEnabled ?? false;
     }
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android != null) {
       return await android.areNotificationsEnabled() ?? false;
     }
@@ -73,8 +82,12 @@ class NotificationService {
   ) async {
     await initialize();
     final when = tz.TZDateTime.from(
-      DateTime(warrantyEnd.year, warrantyEnd.month, warrantyEnd.day, 10)
-          .subtract(Duration(days: daysBefore)),
+      DateTime(
+        warrantyEnd.year,
+        warrantyEnd.month,
+        warrantyEnd.day,
+        10,
+      ).subtract(Duration(days: daysBefore)),
       tz.local,
     );
     if (when.isBefore(tz.TZDateTime.now(tz.local))) return;
@@ -148,12 +161,15 @@ class NotificationService {
     }
     if (!await isPermissionGranted()) return;
     await scheduleWarrantyReminder(
-        item.id.hashCode, item.name, end, daysBefore);
+      item.id.hashCode,
+      item.name,
+      end,
+      daysBefore,
+    );
   }
 
   /// 保养提醒通知 id：与保修 id 区分开。
-  static int maintenanceNotifyId(String itemId) =>
-      '${itemId}_m'.hashCode;
+  static int maintenanceNotifyId(String itemId) => '${itemId}_m'.hashCode;
 
   /// 同步单个物品的保养提醒：设了周期则调度下次到期日，否则取消。
   static Future<void> syncMaintenanceReminder(Item item) async {
@@ -167,7 +183,11 @@ class NotificationService {
     }
     if (!await isPermissionGranted()) return;
     await scheduleMaintenanceReminder(
-        notifyId, item.name, next, item.maintenanceMonths!);
+      notifyId,
+      item.name,
+      next,
+      item.maintenanceMonths!,
+    );
   }
 
   /// 取消某个物品的全部提醒（保修 + 保养）。

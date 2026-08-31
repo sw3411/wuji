@@ -57,10 +57,13 @@ class BackupService {
     final file = File(p.join(dir.path, name));
     await file.writeAsString(jsonEncode(data), flush: true);
 
-    await Share.shareXFiles([XFile(file.path)],
-        subject: '${AppInfo.appName} 数据备份');
-    await _settingsRepo.set(SettingsRepository.keyLastBackupAt,
-        DateTime.now().toIso8601String());
+    await Share.shareXFiles([
+      XFile(file.path),
+    ], subject: '${AppInfo.appName} 数据备份');
+    await _settingsRepo.set(
+      SettingsRepository.keyLastBackupAt,
+      DateTime.now().toIso8601String(),
+    );
     return file;
   }
 
@@ -128,7 +131,9 @@ class BackupService {
     }
     final version = (data['version'] as num?)?.toInt() ?? 0;
     if (version > AppInfo.backupVersion) {
-      throw BackupException('备份版本（v$version）高于当前 App 支持的版本（v${AppInfo.backupVersion}），请先升级 App');
+      throw BackupException(
+        '备份版本（v$version）高于当前 App 支持的版本（v${AppInfo.backupVersion}），请先升级 App',
+      );
     }
     if (data['items'] is! List) {
       throw BackupException('备份缺少物品数据，文件可能不完整');
@@ -138,13 +143,19 @@ class BackupService {
 
   /// 恢复备份。overwrite=true 覆盖现有数据，false 合并（按 id 去重，新数据优先）。
   /// 恢复前自动创建当前数据的临时备份。
-  Future<int> restore(Map<String, dynamic> data,
-      {required bool overwrite}) async {
+  Future<int> restore(
+    Map<String, dynamic> data, {
+    required bool overwrite,
+  }) async {
     // 先把当前数据写一份临时备份，失败可回滚。
     final tempBackup = await _buildPayload();
     final dir = await getApplicationDocumentsDirectory();
-    final rollbackFile = File(p.join(dir.path,
-        'rollback_${DateTime.now().millisecondsSinceEpoch}.json'));
+    final rollbackFile = File(
+      p.join(
+        dir.path,
+        'rollback_${DateTime.now().millisecondsSinceEpoch}.json',
+      ),
+    );
     await rollbackFile.writeAsString(jsonEncode(tempBackup), flush: true);
 
     try {
@@ -158,30 +169,36 @@ class BackupService {
 
       int count = 0;
       for (final c in (data['categories'] as List)) {
-        await _categoryRepo
-            .upsert(Category.fromJson(c as Map<String, dynamic>));
+        await _categoryRepo.upsert(
+          Category.fromJson(c as Map<String, dynamic>),
+        );
       }
       for (final l in (data['locations'] as List)) {
-        await _locationRepo
-            .upsert(Location.fromJson(l as Map<String, dynamic>));
+        await _locationRepo.upsert(
+          Location.fromJson(l as Map<String, dynamic>),
+        );
       }
       for (final raw in (data['items'] as List)) {
         await _itemRepo.upsert(Item.fromJson(raw as Map<String, dynamic>));
         count++;
       }
       for (final raw in (data['saleRecords'] as List? ?? const [])) {
-        await _saleRepo
-            .upsert(SaleRecord.fromJson(raw as Map<String, dynamic>));
+        await _saleRepo.upsert(
+          SaleRecord.fromJson(raw as Map<String, dynamic>),
+        );
       }
       for (final raw in (data['itemEvents'] as List? ?? const [])) {
-        await _itemRepo
-            .addEvent(ItemEvent.fromJson(raw as Map<String, dynamic>));
+        await _itemRepo.addEvent(
+          ItemEvent.fromJson(raw as Map<String, dynamic>),
+        );
       }
       if (data['settings'] is Map<String, dynamic>) {
         await _settingsRepo.importAll(
-            (data['settings'] as Map<String, dynamic>).map(
-                (k, v) => MapEntry(k, v.toString())),
-            overwrite: overwrite);
+          (data['settings'] as Map<String, dynamic>).map(
+            (k, v) => MapEntry(k, v.toString()),
+          ),
+          overwrite: overwrite,
+        );
       }
 
       // 恢复图片。
@@ -211,30 +228,37 @@ class BackupService {
     for (final i in items) {
       String esc(String s) =>
           s.contains(',') || s.contains('"') || s.contains('\n')
-              ? '"${s.replaceAll('"', '""')}"'
-              : s;
-      buffer.writeln([
-        esc(i.name),
-        esc(i.categoryName),
-        (i.purchasePrice / 100).toStringAsFixed(2),
-        i.currency,
-        i.purchaseDate.toIso8601String().substring(0, 10),
-        esc(i.purchaseChannel ?? ''),
-        esc(i.brand ?? ''),
-        esc(i.model ?? ''),
-        i.quantity.toString(),
-        esc(i.status.label),
-        esc(i.locationName ?? ''),
-        esc(i.tags.join(' ')),
-        esc(i.notes ?? ''),
-      ].join(','));
+          ? '"${s.replaceAll('"', '""')}"'
+          : s;
+      buffer.writeln(
+        [
+          esc(i.name),
+          esc(i.categoryName),
+          (i.purchasePrice / 100).toStringAsFixed(2),
+          i.currency,
+          i.purchaseDate.toIso8601String().substring(0, 10),
+          esc(i.purchaseChannel ?? ''),
+          esc(i.brand ?? ''),
+          esc(i.model ?? ''),
+          i.quantity.toString(),
+          esc(i.status.label),
+          esc(i.locationName ?? ''),
+          esc(i.tags.join(' ')),
+          esc(i.notes ?? ''),
+        ].join(','),
+      );
     }
     final dir = await getTemporaryDirectory();
-    final file = File(p.join(dir.path,
-        'wuji_items_${DateTime.now().millisecondsSinceEpoch}.csv'));
+    final file = File(
+      p.join(
+        dir.path,
+        'wuji_items_${DateTime.now().millisecondsSinceEpoch}.csv',
+      ),
+    );
     await file.writeAsString('\uFEFF${buffer.toString()}', flush: true);
-    await Share.shareXFiles([XFile(file.path)],
-        subject: '${AppInfo.appName} 物品清单');
+    await Share.shareXFiles([
+      XFile(file.path),
+    ], subject: '${AppInfo.appName} 物品清单');
     return file;
   }
 

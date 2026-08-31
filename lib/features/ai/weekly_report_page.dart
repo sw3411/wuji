@@ -63,7 +63,8 @@ class WeeklyReportPage extends ConsumerWidget {
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Icon(Icons.refresh),
           ),
         ],
@@ -73,8 +74,10 @@ class WeeklyReportPage extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('配置 AI 后自动生成每周报告',
-                      style: AppTheme.caption(cs.onSurfaceVariant)),
+                  Text(
+                    '配置 AI 后自动生成每周报告',
+                    style: AppTheme.caption(cs.onSurfaceVariant),
+                  ),
                   const SizedBox(height: 8),
                   FilledButton.tonal(
                     onPressed: () => context.push('/settings/ai'),
@@ -94,10 +97,12 @@ class WeeklyReportPage extends ConsumerWidget {
                       padding: const EdgeInsets.all(24),
                       child: Column(
                         children: [
-                          const CircularProgressIndicator(strokeWidth: 2),
+                          const AiTypingDots(),
                           const SizedBox(height: 12),
-                          Text('正在生成本周报告…',
-                              style: AppTheme.caption(cs.onSurfaceVariant)),
+                          Text(
+                            '正在生成本周报告…',
+                            style: AppTheme.caption(cs.onSurfaceVariant),
+                          ),
                         ],
                       ),
                     ),
@@ -105,7 +110,17 @@ class WeeklyReportPage extends ConsumerWidget {
                 else if (error != null && report == null)
                   _hintCard(context, '生成失败：$error', Icons.error_outline)
                 else if (report == null)
-                  _hintCard(context, '本周报告将在这里生成', Icons.insights_outlined)
+                  _hintCard(
+                    context,
+                    '本周报告将在这里生成，也可立即生成',
+                    Icons.insights_outlined,
+                    action: FilledButton.tonal(
+                      onPressed: refreshing
+                          ? null
+                          : () => runWeeklyAiReport(ref, force: true),
+                      child: const Text('立即生成'),
+                    ),
+                  )
                 else
                   Card(
                     child: Padding(
@@ -115,11 +130,16 @@ class WeeklyReportPage extends ConsumerWidget {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.auto_awesome,
-                                  size: 16, color: cs.primary),
+                              Icon(
+                                Icons.auto_awesome,
+                                size: 16,
+                                color: cs.primary,
+                              ),
                               const SizedBox(width: 6),
-                              Text('本周总结',
-                                  style: AppTheme.cardTitle(cs.onSurface)),
+                              Text(
+                                '本周总结',
+                                style: AppTheme.cardTitle(cs.onSurface),
+                              ),
                               const Spacer(),
                               if (report.generatedAt != null)
                                 Text(
@@ -142,31 +162,40 @@ class WeeklyReportPage extends ConsumerWidget {
     );
   }
 
-  Widget _hintCard(BuildContext context, String text, IconData icon) {
+  Widget _hintCard(
+    BuildContext context,
+    String text,
+    IconData icon, {
+    Widget? action,
+  }) {
     final cs = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Center(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 18, color: cs.onSurfaceVariant),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(text,
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: cs.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    text,
                     textAlign: TextAlign.center,
-                    style: AppTheme.caption(cs.onSurfaceVariant)),
-              ),
-            ],
-          ),
+                    style: AppTheme.caption(cs.onSurfaceVariant),
+                  ),
+                ),
+              ],
+            ),
+            if (action != null) ...[const SizedBox(height: 12), action],
+          ],
         ),
       ),
     );
   }
 
-  Widget _statsCard(
-      BuildContext context, _WeekStats stats, String currency) {
+  Widget _statsCard(BuildContext context, _WeekStats stats, String currency) {
     final cs = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
@@ -179,11 +208,18 @@ class WeeklyReportPage extends ConsumerWidget {
                 children: [
                   Text('本周新增', style: AppTheme.label(cs.onSurfaceVariant)),
                   const SizedBox(height: 6),
-                  Text('${stats.newCount} 件',
-                      style: AppTheme.bigNumber(cs.onSurface, size: 24)),
+                  Text(
+                    '${stats.newCount} 件',
+                    style: AppTheme.bigNumber(cs.onSurface, size: 24),
+                  ),
                   const SizedBox(height: 2),
-                  Text(Money.formatCompact(stats.newSpendCents, currency: currency),
-                      style: AppTheme.caption(cs.primary)),
+                  Text(
+                    Money.formatCompact(
+                      stats.newSpendCents,
+                      currency: currency,
+                    ),
+                    style: AppTheme.caption(cs.primary),
+                  ),
                 ],
               ),
             ),
@@ -195,12 +231,16 @@ class WeeklyReportPage extends ConsumerWidget {
                 children: [
                   Text('本周转卖', style: AppTheme.label(cs.onSurfaceVariant)),
                   const SizedBox(height: 6),
-                  Text('${stats.soldCount} 件',
-                      style: AppTheme.bigNumber(cs.onSurface, size: 24)),
+                  Text(
+                    '${stats.soldCount} 件',
+                    style: AppTheme.bigNumber(cs.onSurface, size: 24),
+                  ),
                   const SizedBox(height: 2),
                   if (stats.soldCount > 0)
-                    Text('净回收 ${Money.formatCompact(stats.saleIncomeCents, currency: currency)}',
-                        style: AppTheme.caption(const Color(0xFF6B8F87))),
+                    Text(
+                      '净回收 ${Money.formatCompact(stats.saleIncomeCents, currency: currency)}',
+                      style: AppTheme.caption(AppTheme.sage),
+                    ),
                 ],
               ),
             ),
@@ -214,7 +254,11 @@ class WeeklyReportPage extends ConsumerWidget {
 /// 近 7 天本地统计（不经 AI，秒出）。
 class _WeekStats {
   const _WeekStats(
-      this.newCount, this.newSpendCents, this.soldCount, this.saleIncomeCents);
+    this.newCount,
+    this.newSpendCents,
+    this.soldCount,
+    this.saleIncomeCents,
+  );
 
   final int newCount;
   final int newSpendCents;
@@ -222,17 +266,23 @@ class _WeekStats {
   final int saleIncomeCents;
 
   static _WeekStats of(
-      List<Item> items, Map<String, SaleRecord> sales, [DateTime? now]) {
+    List<Item> items,
+    Map<String, SaleRecord> sales, [
+    DateTime? now,
+  ]) {
     final n = now ?? DateTime.now();
     final weekAgo = n.subtract(const Duration(days: 7));
     final active = items.where((i) => !i.isDeleted).toList();
-    final newItems =
-        active.where((i) => !i.purchaseDate.isBefore(weekAgo)).toList();
+    final newItems = active
+        .where((i) => !i.purchaseDate.isBefore(weekAgo))
+        .toList();
     final sold = active
-        .where((i) =>
-            i.status == ItemStatus.sold &&
-            sales[i.id] != null &&
-            !sales[i.id]!.saleDate.isBefore(weekAgo))
+        .where(
+          (i) =>
+              i.status == ItemStatus.sold &&
+              sales[i.id] != null &&
+              !sales[i.id]!.saleDate.isBefore(weekAgo),
+        )
         .toList();
     return _WeekStats(
       newItems.length,

@@ -35,46 +35,44 @@ class ItemEvent {
     String? description,
     int? amount,
     List<String>? imagePaths,
-  }) =>
-      ItemEvent(
-        id: id,
-        itemId: itemId,
-        eventType: eventType ?? this.eventType,
-        eventDate: eventDate ?? this.eventDate,
-        title: title ?? this.title,
-        description: description ?? this.description,
-        amount: amount ?? this.amount,
-        imagePaths: imagePaths ?? this.imagePaths,
-        createdAt: createdAt,
-        updatedAt: DateTime.now(),
-      );
+  }) => ItemEvent(
+    id: id,
+    itemId: itemId,
+    eventType: eventType ?? this.eventType,
+    eventDate: eventDate ?? this.eventDate,
+    title: title ?? this.title,
+    description: description ?? this.description,
+    amount: amount ?? this.amount,
+    imagePaths: imagePaths ?? this.imagePaths,
+    createdAt: createdAt,
+    updatedAt: DateTime.now(),
+  );
 
   factory ItemEvent.fromJson(Map<String, dynamic> json) => ItemEvent(
-        id: json['id'] as String,
-        itemId: json['itemId'] as String,
-        eventType: ItemEventType.fromName(json['eventType'] as String),
-        eventDate: DateTime.parse(json['eventDate'] as String),
-        title: json['title'] as String,
-        description: json['description'] as String?,
-        amount: (json['amount'] as num?)?.toInt(),
-        imagePaths:
-            (json['imagePaths'] as List<dynamic>? ?? const [])
-                .map((e) => e as String)
-                .toList(),
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        updatedAt: DateTime.parse(json['updatedAt'] as String),
-      );
+    id: json['id'] as String,
+    itemId: json['itemId'] as String,
+    eventType: ItemEventType.fromName(json['eventType'] as String),
+    eventDate: DateTime.parse(json['eventDate'] as String),
+    title: json['title'] as String,
+    description: json['description'] as String?,
+    amount: (json['amount'] as num?)?.toInt(),
+    imagePaths: (json['imagePaths'] as List<dynamic>? ?? const [])
+        .map((e) => e as String)
+        .toList(),
+    createdAt: DateTime.parse(json['createdAt'] as String),
+    updatedAt: DateTime.parse(json['updatedAt'] as String),
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'itemId': itemId,
-        'eventType': eventType.name,
-        'eventDate': eventDate.toIso8601String(),
-        'title': title,
-        'description': description,
-        'amount': amount,
-        'imagePaths': imagePaths,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'itemId': itemId,
+    'eventType': eventType.name,
+    'eventDate': eventDate.toIso8601String(),
+    'title': title,
+    'description': description,
+    'amount': amount,
+    'imagePaths': imagePaths,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 }

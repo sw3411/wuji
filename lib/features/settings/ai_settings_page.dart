@@ -39,7 +39,9 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
   }
 
   Future<void> _save() async {
-    final config = ref.read(aiConfigProvider).copyWith(
+    final config = ref
+        .read(aiConfigProvider)
+        .copyWith(
           baseUrl: _baseUrl.text.trim(),
           apiKey: _apiKey.text.trim(),
           model: _model.text.trim(),
@@ -47,30 +49,34 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
         );
     await ref.read(aiConfigProvider.notifier).save(config);
     if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('AI 配置已保存')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('AI 配置已保存')));
     }
   }
 
   Future<void> _test() async {
     setState(() => _testing = true);
     try {
-      final config = ref.read(aiConfigProvider).copyWith(
+      final config = ref
+          .read(aiConfigProvider)
+          .copyWith(
             baseUrl: _baseUrl.text.trim(),
             apiKey: _apiKey.text.trim(),
             model: _model.text.trim(),
             enabled: true,
           );
-      final reply = await AiClient(config)
-          .ask('你是一个连通性测试助手。', '请回复：连接成功');
+      final reply = await AiClient(config).ask('你是一个连通性测试助手。', '请回复：连接成功');
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('连接成功：$reply')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('连接成功：$reply')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('测试失败：$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('测试失败：$e')));
       }
     } finally {
       if (mounted) setState(() => _testing = false);
@@ -97,9 +103,7 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
                       Expanded(
                         child: Text(
                           '隐私提示',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleSmall
+                          style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                       ),
@@ -110,8 +114,9 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
                     '使用 AI 功能时，会把相关物品数据发送到你配置的 API 服务商。'
                     '数据不经任何第三方中转，直接从本机发送。不配置则完全不发送。',
                     style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -157,8 +162,9 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
             '支持所有 OpenAI 兼容接口：OpenAI、DeepSeek、智谱 GLM、Moonshot、'
             '本地 Ollama（地址填 http://localhost:11434/v1）等。',
             style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 20),
           Row(
@@ -170,7 +176,8 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2))
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Icon(Icons.wifi_tethering),
                   label: const Text('测试连接'),
                 ),
@@ -197,12 +204,11 @@ extension _AiConfigCopy on AiConfig {
     String? baseUrl,
     String? apiKey,
     String? model,
-  }) =>
-      AiConfig(
-        enabled: enabled ?? this.enabled,
-        baseUrl: baseUrl ?? this.baseUrl,
-        apiKey: apiKey ?? this.apiKey,
-        model: model ?? this.model,
-        temperature: temperature,
-      );
+  }) => AiConfig(
+    enabled: enabled ?? this.enabled,
+    baseUrl: baseUrl ?? this.baseUrl,
+    apiKey: apiKey ?? this.apiKey,
+    model: model ?? this.model,
+    temperature: temperature,
+  );
 }

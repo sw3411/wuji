@@ -33,27 +33,27 @@ class AppSettings {
   bool appLockEnabled;
 
   AppSettings copy() => AppSettings(
-        currency: currency,
-        defaultChannel: defaultChannel,
-        defaultViewMode: defaultViewMode,
-        idleThresholdDays: idleThresholdDays,
-        warrantyReminderEnabled: warrantyReminderEnabled,
-        warrantyReminderDays: warrantyReminderDays,
-        idleReminderEnabled: idleReminderEnabled,
-        themeMode: themeMode,
-        monthlyBudgetCents: monthlyBudgetCents,
-        appLockEnabled: appLockEnabled,
-      );
+    currency: currency,
+    defaultChannel: defaultChannel,
+    defaultViewMode: defaultViewMode,
+    idleThresholdDays: idleThresholdDays,
+    warrantyReminderEnabled: warrantyReminderEnabled,
+    warrantyReminderDays: warrantyReminderDays,
+    idleReminderEnabled: idleReminderEnabled,
+    themeMode: themeMode,
+    monthlyBudgetCents: monthlyBudgetCents,
+    appLockEnabled: appLockEnabled,
+  );
 }
 
 enum ViewMode { card, compact, showcase }
 
 extension ViewModeX on ViewMode {
   String get label => switch (this) {
-        ViewMode.card => '卡片',
-        ViewMode.compact => '紧凑',
-        ViewMode.showcase => '橱窗',
-      };
+    ViewMode.card => '卡片',
+    ViewMode.compact => '紧凑',
+    ViewMode.showcase => '橱窗',
+  };
 }
 
 /// 设置加载/保存。
@@ -67,8 +67,9 @@ class AppSettingsController {
     s.currency = await _repo.get(SettingsRepository.keyCurrency) ?? 'CNY';
     s.defaultChannel =
         await _repo.get(SettingsRepository.keyDefaultChannel) ?? '淘宝';
-    s.defaultViewMode = switch (
-        await _repo.get(SettingsRepository.keyDefaultViewMode)) {
+    s.defaultViewMode = switch (await _repo.get(
+      SettingsRepository.keyDefaultViewMode,
+    )) {
       'compact' => ViewMode.compact,
       'showcase' => ViewMode.showcase,
       _ => ViewMode.card,
@@ -77,7 +78,7 @@ class AppSettingsController {
         await _repo.getInt(SettingsRepository.keyIdleThresholdDays) ?? 90;
     s.warrantyReminderEnabled =
         await _repo.getBool(SettingsRepository.keyWarrantyReminderEnabled) ??
-            true;
+        true;
     s.warrantyReminderDays =
         await _repo.getInt(SettingsRepository.keyWarrantyReminderDays) ?? 30;
     s.idleReminderEnabled =
@@ -98,19 +99,31 @@ class AppSettingsController {
   Future<void> save(AppSettings s) async {
     await _repo.set(SettingsRepository.keyCurrency, s.currency);
     await _repo.set(SettingsRepository.keyDefaultChannel, s.defaultChannel);
-    await _repo.set(SettingsRepository.keyDefaultViewMode,
-        s.defaultViewMode.name);
-    await _repo.setInt(SettingsRepository.keyIdleThresholdDays, s.idleThresholdDays);
-    await _repo.setBool(
-        SettingsRepository.keyWarrantyReminderEnabled, s.warrantyReminderEnabled);
+    await _repo.set(
+      SettingsRepository.keyDefaultViewMode,
+      s.defaultViewMode.name,
+    );
     await _repo.setInt(
-        SettingsRepository.keyWarrantyReminderDays, s.warrantyReminderDays);
+      SettingsRepository.keyIdleThresholdDays,
+      s.idleThresholdDays,
+    );
     await _repo.setBool(
-        SettingsRepository.keyIdleReminderEnabled, s.idleReminderEnabled);
+      SettingsRepository.keyWarrantyReminderEnabled,
+      s.warrantyReminderEnabled,
+    );
     await _repo.setInt(
-        SettingsRepository.keyMonthlyBudget, s.monthlyBudgetCents);
+      SettingsRepository.keyWarrantyReminderDays,
+      s.warrantyReminderDays,
+    );
     await _repo.setBool(
-        SettingsRepository.keyAppLockEnabled, s.appLockEnabled);
+      SettingsRepository.keyIdleReminderEnabled,
+      s.idleReminderEnabled,
+    );
+    await _repo.setInt(
+      SettingsRepository.keyMonthlyBudget,
+      s.monthlyBudgetCents,
+    );
+    await _repo.setBool(SettingsRepository.keyAppLockEnabled, s.appLockEnabled);
     await _repo.set(SettingsRepository.keyThemeMode, switch (s.themeMode) {
       ThemeMode.light => 'light',
       ThemeMode.dark => 'dark',
@@ -120,4 +133,12 @@ class AppSettingsController {
 }
 
 /// 内置货币选项。
-const List<String> kCurrencies = ['CNY', 'USD', 'EUR', 'JPY', 'GBP', 'HKD', 'TWD'];
+const List<String> kCurrencies = [
+  'CNY',
+  'USD',
+  'EUR',
+  'JPY',
+  'GBP',
+  'HKD',
+  'TWD',
+];

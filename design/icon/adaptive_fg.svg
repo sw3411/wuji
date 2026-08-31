@@ -1,0 +1,11 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Android 自适应图标 · 前景层（立方体+AI 星光，整体缩放至安全区内，
+       圆形遮罩裁切后仍完整） -->
+  <g transform="translate(-6.5,92.1) scale(0.85)">
+    <polygon points="512,318 706,428 512,538 318,428" fill="#FFFFFF"/>
+    <polygon points="318,428 512,538 512,774 318,664" fill="#FFFFFF" opacity="0.9"/>
+    <polygon points="706,428 512,538 512,774 706,664" fill="#FFFFFF" opacity="0.7"/>
+    <path d="M766 214 C775 274 801 300 861 309 C801 318 775 344 766 404 C757 344 731 318 671 309 C731 300 757 274 766 214 Z" fill="#FFFFFF"/>
+    <path d="M850 402 C855 434 870 449 902 454 C870 459 855 474 850 506 C845 474 830 459 798 454 C830 449 845 434 850 402 Z" fill="#FFFFFF" opacity="0.9"/>
+  </g>
+</svg>

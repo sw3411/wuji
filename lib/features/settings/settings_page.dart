@@ -9,13 +9,14 @@ import 'package:go_router/go_router.dart';
 import '../../app/app_settings.dart';
 import '../../app/image_store.dart';
 import '../../app/providers.dart';
+import '../../app/theme.dart';
 import '../../core/constants/app_info.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../core/security/app_lock.dart';
 import '../../core/utils/money.dart';
 import '../../domain/models/enums.dart';
 
-/// 我的 / 设置页。
+/// 设置与隐私控制中心。
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
@@ -26,12 +27,15 @@ class SettingsPage extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: Text('${AppInfo.appName} · 我的')),
+      appBar: AppBar(title: const Text('设置')),
       body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
         children: [
-          _header(context, ai.isReady),
-          _group(context, '偏好', [
+          _header(context, ai.isReady, settings.appLockEnabled),
+          const SizedBox(height: 24),
+          _group(context, '外观与偏好', [
+            _themeTile(context, ref, settings),
+            const Divider(indent: 16, endIndent: 16),
             _dropTile(
               context,
               '货币',
@@ -55,12 +59,16 @@ class SettingsPage extends ConsumerWidget {
               '默认视图模式',
               settings.defaultViewMode.label,
               ViewMode.values.map((v) => v.label).toList(),
-              (v) => ref.read(appSettingsProvider.notifier).update(
+              (v) => ref
+                  .read(appSettingsProvider.notifier)
+                  .update(
                     settings.copy()
-                      ..defaultViewMode = ViewMode.values
-                          .firstWhere((m) => m.label == v),
+                      ..defaultViewMode = ViewMode.values.firstWhere(
+                        (m) => m.label == v,
+                      ),
                   ),
             ),
+            const Divider(indent: 16, endIndent: 16),
             _stepperTile(
               context,
               '闲置判定天数',
@@ -69,6 +77,7 @@ class SettingsPage extends ConsumerWidget {
                   .read(appSettingsProvider.notifier)
                   .update(settings.copy()..idleThresholdDays = v),
             ),
+            const Divider(indent: 16, endIndent: 16),
             ListTile(
               leading: const Icon(Icons.savings_outlined),
               title: const Text('月度购物预算'),
@@ -81,35 +90,51 @@ class SettingsPage extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _editBudget(context, ref, settings),
             ),
+          ]),
+          _group(context, '隐私与智能能力', [
             SwitchListTile(
               secondary: const Icon(Icons.lock_outline),
               title: const Text('应用锁'),
-              subtitle: const Text('启动与回到前台需人脸 / 指纹解锁',
-                  style: TextStyle(fontSize: 12)),
+              subtitle: const Text(
+                '启动与回到前台需人脸 / 指纹解锁',
+                style: TextStyle(fontSize: 12),
+              ),
               value: settings.appLockEnabled,
               onChanged: (v) => _toggleAppLock(context, ref, settings, v),
             ),
-          ]),
-          _group(context, 'AI 助手', [
+            const Divider(indent: 16, endIndent: 16),
             ListTile(
               leading: const Icon(Icons.auto_awesome_outlined),
-              title: const Text('AI 助手设置'),
+              title: const Text('AI 能力'),
               subtitle: Text(
-                ai.isReady ? '已配置（${ai.model}）' : '未配置，点击填写 API 信息',
+                ai.isReady
+                    ? '已连接 ${ai.model}；仅在你主动使用时发送必要内容'
+                    : '可选功能；未配置时不会向外发送任何物品数据',
                 style: TextStyle(
-                    fontSize: 12,
-                    color: ai.isReady ? cs.primary : cs.onSurfaceVariant),
+                  fontSize: 12.5,
+                  color: ai.isReady ? cs.primary : cs.onSurfaceVariant,
+                ),
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/settings/ai'),
+            ),
+            const Divider(indent: 16, endIndent: 16),
+            ListTile(
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('隐私说明'),
+              subtitle: const Text('默认本地保存，不要求注册登录'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showPrivacy(context),
             ),
           ]),
           _group(context, '提醒', [
             SwitchListTile(
               secondary: const Icon(Icons.shield_outlined),
               title: const Text('保修到期提醒'),
-              subtitle: Text('提前 ${settings.warrantyReminderDays} 天提醒',
-                  style: const TextStyle(fontSize: 12)),
+              subtitle: Text(
+                '提前 ${settings.warrantyReminderDays} 天提醒',
+                style: const TextStyle(fontSize: 12),
+              ),
               value: settings.warrantyReminderEnabled,
               onChanged: (v) async {
                 if (v) {
@@ -127,11 +152,14 @@ class SettingsPage extends ConsumerWidget {
                     .read(appSettingsProvider.notifier)
                     .update(settings.copy()..warrantyReminderEnabled = v);
                 if (v) {
-                  final items =
-                      await ref.read(itemRepoProvider).getAll();
-                  unawaited(NotificationService.rescheduleAll(items,
+                  final items = await ref.read(itemRepoProvider).getAll();
+                  unawaited(
+                    NotificationService.rescheduleAll(
+                      items,
                       enabled: true,
-                      daysBefore: settings.warrantyReminderDays));
+                      daysBefore: settings.warrantyReminderDays,
+                    ),
+                  );
                 }
               },
             ),
@@ -155,26 +183,6 @@ class SettingsPage extends ConsumerWidget {
               },
             ),
           ]),
-          _group(context, '外观', [
-            _dropTile(
-              context,
-              '深色模式',
-              switch (settings.themeMode) {
-                ThemeMode.system => '跟随系统',
-                ThemeMode.light => '浅色',
-                ThemeMode.dark => '深色',
-              },
-              ['跟随系统', '浅色', '深色'],
-              (v) => ref.read(appSettingsProvider.notifier).update(
-                    settings.copy()
-                      ..themeMode = switch (v) {
-                        '浅色' => ThemeMode.light,
-                        '深色' => ThemeMode.dark,
-                        _ => ThemeMode.system,
-                      },
-                  ),
-            ),
-          ]),
           _group(context, '数据管理', [
             ListTile(
               leading: const Icon(Icons.category_outlined),
@@ -190,18 +198,20 @@ class SettingsPage extends ConsumerWidget {
             ),
             ListTile(
               leading: const Icon(Icons.backup_outlined),
-              title: const Text('数据备份'),
-              subtitle: Text(_lastBackupText(ref),
-                  style: const TextStyle(fontSize: 12)),
+              title: const Text('导出完整备份'),
+              subtitle: const Text('包含物品、位置、设置与图片'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _backup(ref),
             ),
+            const Divider(indent: 16, endIndent: 16),
             ListTile(
               leading: const Icon(Icons.restore),
-              title: const Text('数据恢复'),
+              title: const Text('从备份恢复'),
+              subtitle: const Text('支持覆盖或合并现有档案'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _restore(context, ref),
             ),
+            const Divider(indent: 16, endIndent: 16),
             ListTile(
               leading: const Icon(Icons.table_view_outlined),
               title: const Text('导出 CSV'),
@@ -218,23 +228,18 @@ class SettingsPage extends ConsumerWidget {
             ),
             _storageTile(context, ref),
           ]),
-          _group(context, '关于', [
+          _group(context, '应用', [
             ListTile(
               leading: const Icon(Icons.info_outline),
               title: const Text('关于 ${AppInfo.appName}'),
-              subtitle: Text('v${AppInfo.version}',
-                  style: const TextStyle(fontSize: 12)),
+              subtitle: Text(
+                'v${AppInfo.version}',
+                style: const TextStyle(fontSize: 12),
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/settings/about'),
             ),
-            ListTile(
-              leading: const Icon(Icons.privacy_tip_outlined),
-              title: const Text('隐私说明'),
-              subtitle: const Text('数据仅保存在本机', style: TextStyle(fontSize: 12)),
-              onTap: () => _showPrivacy(context),
-            ),
           ]),
-          const SizedBox(height: 32),
         ],
       ),
     );
@@ -242,7 +247,11 @@ class SettingsPage extends ConsumerWidget {
 
   /// 开关应用锁：先验证一次生物识别，防止他人关闭。
   Future<void> _toggleAppLock(
-      BuildContext context, WidgetRef ref, AppSettings settings, bool v) async {
+    BuildContext context,
+    WidgetRef ref,
+    AppSettings settings,
+    bool v,
+  ) async {
     final available = await AppLock.isAvailable();
     if (!available) {
       if (context.mounted) {
@@ -270,17 +279,17 @@ class SettingsPage extends ConsumerWidget {
     }
   }
 
-  String _lastBackupText(WidgetRef ref) {
-    return '导出包含图片的完整备份';
-  }
-
   /// 编辑月度购物预算（元）。留空或 0 = 关闭预算。
   Future<void> _editBudget(
-      BuildContext context, WidgetRef ref, AppSettings settings) async {
+    BuildContext context,
+    WidgetRef ref,
+    AppSettings settings,
+  ) async {
     final ctrl = TextEditingController(
-        text: settings.monthlyBudgetCents > 0
-            ? (settings.monthlyBudgetCents / 100).toStringAsFixed(0)
-            : '');
+      text: settings.monthlyBudgetCents > 0
+          ? (settings.monthlyBudgetCents / 100).toStringAsFixed(0)
+          : '',
+    );
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -291,26 +300,33 @@ class SettingsPage extends ConsumerWidget {
             TextField(
               controller: ctrl,
               autofocus: true,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: '预算金额（元 / 月）',
                 hintText: '例如 3000',
               ),
             ),
             const SizedBox(height: 8),
-            Text('留空表示关闭预算功能。统计页与 AI 诊断会跟踪本月花费进度。',
-                style: TextStyle(
-                    fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            Text(
+              '留空表示关闭预算功能。统计页与 AI 诊断会跟踪本月花费进度。',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('保存')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('保存'),
+          ),
         ],
       ),
     );
@@ -319,36 +335,77 @@ class SettingsPage extends ConsumerWidget {
     if (confirmed != true) return;
     await ref
         .read(appSettingsProvider.notifier)
-        .update(settings.copy()..monthlyBudgetCents = (cents ?? 0).clamp(0, 100 * 100 * 10000));
+        .update(
+          settings.copy()
+            ..monthlyBudgetCents = (cents ?? 0).clamp(0, 100 * 100 * 10000),
+        );
   }
 
-  Widget _header(BuildContext context, bool aiReady) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: Row(
+  Widget _header(BuildContext context, bool aiReady, bool appLockEnabled) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cs.primaryContainer,
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            child: const Icon(Icons.person, color: Colors.white, size: 30),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('本地用户',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-                Text(AppInfo.appTagline,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant)),
-              ],
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: cs.primary,
+              borderRadius: BorderRadius.circular(13),
             ),
+            child: Icon(Icons.lock_person_outlined, color: cs.onPrimary),
           ),
+          const SizedBox(height: 18),
+          Text('你的私人档案，默认只在本机。', style: AppTheme.title(cs.onPrimaryContainer)),
+          const SizedBox(height: 6),
+          Text(
+            '无需账号。你可以随时导出完整备份；AI 仅在主动调用时工作。',
+            style: AppTheme.body(cs.onPrimaryContainer.withValues(alpha: 0.78)),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _privacyBadge(context, Icons.phone_android_outlined, '本地存储'),
+              _privacyBadge(
+                context,
+                appLockEnabled ? Icons.lock_outline : Icons.lock_open_outlined,
+                appLockEnabled ? '应用锁已开启' : '应用锁未开启',
+              ),
+              _privacyBadge(
+                context,
+                Icons.auto_awesome_outlined,
+                aiReady ? 'AI 已连接' : 'AI 未连接',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _privacyBadge(BuildContext context, IconData icon, String label) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: cs.surface.withValues(alpha: 0.76),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: cs.primary),
+          const SizedBox(width: 6),
+          Text(label, style: AppTheme.caption(cs.onSurface)),
         ],
       ),
     );
@@ -359,38 +416,99 @@ class SettingsPage extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-          child: Text(title,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          padding: const EdgeInsets.fromLTRB(2, 24, 2, 10),
+          child: Text(
+            title,
+            style: AppTheme.label(
+              Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
         ),
-        Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12),
-          child: Column(children: children),
-        ),
+        Card(child: Column(children: children)),
       ],
     );
   }
 
-  Widget _dropTile(BuildContext context, String title, String value,
-      List<String> options, ValueChanged<String> onChanged) {
+  Widget _dropTile(
+    BuildContext context,
+    String title,
+    String value,
+    List<String> options,
+    ValueChanged<String> onChanged,
+  ) {
     return ListTile(
       title: Text(title),
       trailing: DropdownButton<String>(
         value: value,
         underline: const SizedBox.shrink(),
         items: options
-            .map((o) => DropdownMenuItem(value: o, child: Text(o, style: const TextStyle(fontSize: 14))))
+            .map(
+              (o) => DropdownMenuItem(
+                value: o,
+                child: Text(o, style: const TextStyle(fontSize: 14)),
+              ),
+            )
             .toList(),
         onChanged: (v) => onChanged(v!),
       ),
     );
   }
 
-  Widget _stepperTile(BuildContext context, String title, int value,
-      ValueChanged<int> onChanged) {
+  Widget _themeTile(BuildContext context, WidgetRef ref, AppSettings settings) {
+    const labels = {
+      ThemeMode.system: '跟随系统',
+      ThemeMode.light: '浅色',
+      ThemeMode.dark: '深色',
+    };
+    return ListTile(
+      leading: const Icon(Icons.contrast_outlined),
+      title: const Text('外观'),
+      subtitle: Text(labels[settings.themeMode]!),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () async {
+        final selected = await showModalBottomSheet<ThemeMode>(
+          useRootNavigator: true,
+          context: context,
+          builder: (context) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '选择外观',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                ),
+                for (final mode in ThemeMode.values)
+                  RadioListTile<ThemeMode>(
+                    value: mode,
+                    groupValue: settings.themeMode,
+                    title: Text(labels[mode]!),
+                    onChanged: (value) => Navigator.pop(context, value),
+                  ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        );
+        if (selected == null) return;
+        await ref
+            .read(appSettingsProvider.notifier)
+            .update(settings.copy()..themeMode = selected);
+      },
+    );
+  }
+
+  Widget _stepperTile(
+    BuildContext context,
+    String title,
+    int value,
+    ValueChanged<int> onChanged,
+  ) {
     return ListTile(
       title: Text(title),
       trailing: Row(
@@ -421,8 +539,10 @@ class SettingsPage extends ConsumerWidget {
         return ListTile(
           leading: const Icon(Icons.image_outlined),
           title: const Text('图片存储占用'),
-          subtitle:
-              Text('${mb.toStringAsFixed(1)} MB', style: const TextStyle(fontSize: 12)),
+          subtitle: Text(
+            '${mb.toStringAsFixed(1)} MB',
+            style: const TextStyle(fontSize: 12),
+          ),
           trailing: TextButton(
             onPressed: () => _cleanImages(context, ref),
             child: const Text('清理'),
@@ -439,8 +559,14 @@ class SettingsPage extends ConsumerWidget {
         title: const Text('清理无引用图片'),
         content: const Text('将删除没有被任何物品、位置或事件引用的图片文件，此操作不可恢复。'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('清理')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('清理'),
+          ),
         ],
       ),
     );
@@ -496,15 +622,21 @@ class SettingsPage extends ConsumerWidget {
       builder: (context) => AlertDialog(
         title: const Text('恢复备份'),
         content: const Text(
-            '选择恢复方式：\n\n覆盖：清空现有数据后恢复\n合并：与现有数据合并（备份优先）\n\n恢复前会自动创建当前数据的临时备份。'),
+          '选择恢复方式：\n\n覆盖：清空现有数据后恢复\n合并：与现有数据合并（备份优先）\n\n恢复前会自动创建当前数据的临时备份。',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
           OutlinedButton(
-              onPressed: () => Navigator.pop(context, 'merge'),
-              child: const Text('合并')),
+            onPressed: () => Navigator.pop(context, 'merge'),
+            child: const Text('合并'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, 'overwrite'),
-              child: const Text('覆盖')),
+            onPressed: () => Navigator.pop(context, 'overwrite'),
+            child: const Text('覆盖'),
+          ),
         ],
       ),
     );
@@ -512,16 +644,20 @@ class SettingsPage extends ConsumerWidget {
     if (!context.mounted) return;
 
     try {
-      final count =
-          await service.restore(data, overwrite: mode == 'overwrite');
+      final count = await service.restore(data, overwrite: mode == 'overwrite');
       if (context.mounted) {
         _toast(context, '已恢复 $count 件物品');
       }
       final restoredItems = await ref.read(itemRepoProvider).getAll();
       final s = ref.read(appSettingsProvider);
       if (s.warrantyReminderEnabled) {
-        unawaited(NotificationService.rescheduleAll(restoredItems,
-            enabled: true, daysBefore: s.warrantyReminderDays));
+        unawaited(
+          NotificationService.rescheduleAll(
+            restoredItems,
+            enabled: true,
+            daysBefore: s.warrantyReminderDays,
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) _toast(context, e.toString());
@@ -542,14 +678,18 @@ class SettingsPage extends ConsumerWidget {
           '· AI 功能会把相关数据发送到你配置的 API 服务商，未配置时不发送任何数据',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('知道了'),
+          ),
         ],
       ),
     );
   }
 
   void _toast(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }

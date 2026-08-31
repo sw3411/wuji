@@ -1,0 +1,41 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- 物迹 wuji App 图标 · 鲜薄荷 v12.3
+       底板 = App 中央添加钮同款渐变 #2EB878→#178455
+       主体 = 白色立方体（物品档案）+ AI 星光 + 一步轨迹点
+       高光 = 顶部玻璃光泽（呼应悬浮毛玻璃） -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2EB878"/>
+      <stop offset="1" stop-color="#178455"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.18"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.25"/>
+      <stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 底板 -->
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+  <rect width="1024" height="1024" rx="228" fill="url(#glass)"/>
+
+  <!-- 迹：立方体沿对角线落位时留下的两粒轨迹点 -->
+  <circle cx="408" cy="824" r="18" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="316" cy="876" r="12" fill="#FFFFFF" opacity="0.4"/>
+
+  <!-- 物：等距立方体（顶面全亮，两侧渐次压暗出体积感） -->
+  <polygon points="512,318 706,428 512,538 318,428" fill="#FFFFFF"/>
+  <polygon points="318,428 512,538 512,774 318,664" fill="#FFFFFF" opacity="0.9"/>
+  <polygon points="706,428 512,538 512,774 706,664" fill="#FFFFFF" opacity="0.7"/>
+
+  <!-- AI 星光（四角星，一大一小） -->
+  <path d="M766 214 C775 274 801 300 861 309 C801 318 775 344 766 404 C757 344 731 318 671 309 C731 300 757 274 766 214 Z" fill="#FFFFFF"/>
+  <path d="M850 402 C855 434 870 449 902 454 C870 459 855 474 850 506 C845 474 830 459 798 454 C830 449 845 434 850 402 Z" fill="#FFFFFF" opacity="0.9"/>
+
+  <!-- 左上斜向玻璃反光 -->
+  <rect width="1024" height="1024" rx="228" fill="url(#sheen)"/>
+</svg>

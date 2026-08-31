@@ -138,20 +138,26 @@ class _RadarPainter extends CustomPainter {
 
     final dotPaint = Paint()..color = primary;
     TextPainter scorePainter(String text) => TextPainter(
-          text: TextSpan(
-            text: text,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: primary,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-        )..layout();
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: primary,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
 
     for (int i = 0; i < n; i++) {
       final v = values[i];
-      final p = _point(center, radius, ((v ?? 0).clamp(0.0, _max)) / _max, i, n);
+      final p = _point(
+        center,
+        radius,
+        ((v ?? 0).clamp(0.0, _max)) / _max,
+        i,
+        n,
+      );
       canvas.drawCircle(p, 3, dotPaint);
 
       // 顶点旁显示实际分值（未评分为 null 时不显示）。

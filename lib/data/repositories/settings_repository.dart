@@ -26,13 +26,18 @@ class SettingsRepository {
   static const String keyLastBackupAt = 'lastBackupAt';
 
   Future<String?> get(String key) async {
-    final rows = await (_db.select(_db.settings)..where((t) => t.key.equals(key))).get();
+    final rows = await (_db.select(
+      _db.settings,
+    )..where((t) => t.key.equals(key))).get();
     return rows.isEmpty ? null : rows.first.value;
   }
 
   Future<void> set(String key, String value) async {
-    await _db.into(_db.settings).insertOnConflictUpdate(
-        SettingsCompanion(key: Value(key), value: Value(value)));
+    await _db
+        .into(_db.settings)
+        .insertOnConflictUpdate(
+          SettingsCompanion(key: Value(key), value: Value(value)),
+        );
   }
 
   Future<bool?> getBool(String key) async {
@@ -70,7 +75,10 @@ class SettingsRepository {
   }
 
   /// 恢复设置。
-  Future<void> importAll(Map<String, String> data, {bool overwrite = false}) async {
+  Future<void> importAll(
+    Map<String, String> data, {
+    bool overwrite = false,
+  }) async {
     if (overwrite) {
       await (_db.delete(_db.settings)).go();
     }

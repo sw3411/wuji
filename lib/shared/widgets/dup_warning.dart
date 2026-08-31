@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
+import '../../app/theme.dart';
 import '../../core/utils/money.dart';
 import '../../domain/models/item.dart';
 import '../../domain/services/duplicate_finder.dart';
@@ -10,7 +11,12 @@ import '../../domain/services/duplicate_finder.dart';
 /// 相似物品提醒卡：添加物品时提示“你可能已经有类似的了”。
 /// name 为空或无匹配时隐藏。
 class DupWarningCard extends ConsumerWidget {
-  const DupWarningCard({super.key, required this.name, this.excludeId, this.brand});
+  const DupWarningCard({
+    super.key,
+    required this.name,
+    this.excludeId,
+    this.brand,
+  });
 
   final String name;
   final String? excludeId;
@@ -20,14 +26,17 @@ class DupWarningCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final trimmed = name.trim();
     if (trimmed.length < 2) return const SizedBox.shrink();
-    final items =
-        ref.watch(itemsProvider).valueOrNull ?? const <Item>[];
-    final matches = DuplicateFinder.findSimilar(trimmed, items,
-        excludeId: excludeId, brand: brand);
+    final items = ref.watch(itemsProvider).valueOrNull ?? const <Item>[];
+    final matches = DuplicateFinder.findSimilar(
+      trimmed,
+      items,
+      excludeId: excludeId,
+      brand: brand,
+    );
     if (matches.isEmpty) return const SizedBox.shrink();
 
     final cs = Theme.of(context).colorScheme;
-    const tone = Color(0xFF9C8A52);
+    const tone = AppTheme.ochre;
     return Container(
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.all(12),
@@ -43,11 +52,14 @@ class DupWarningCard extends ConsumerWidget {
             children: [
               const Icon(Icons.content_copy, size: 15, color: tone),
               const SizedBox(width: 6),
-              Text('已经有相似的物品，还要买吗？',
-                  style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: tone)),
+              Text(
+                '已经有相似的物品，还要买吗？',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: tone,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -65,11 +77,16 @@ class DupWarningCard extends ConsumerWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontSize: 12.5, color: cs.onSurfaceVariant),
+                          fontSize: 12.5,
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
                     ),
-                    Icon(Icons.chevron_right,
-                        size: 15, color: cs.onSurfaceVariant),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 15,
+                      color: cs.onSurfaceVariant,
+                    ),
                   ],
                 ),
               ),

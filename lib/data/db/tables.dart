@@ -6,7 +6,8 @@ class Items extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get coverImagePath => text().nullable()();
-  TextColumn get additionalImagePaths => text().withDefault(const Constant('[]'))();
+  TextColumn get additionalImagePaths =>
+      text().withDefault(const Constant('[]'))();
   TextColumn get categoryId => text()();
   TextColumn get categoryName => text()();
   IntColumn get purchasePrice => integer()();
@@ -39,14 +40,14 @@ class Items extends Table {
   IntColumn get maintenanceMonths => integer().nullable()();
   TextColumn get usageFrequency => text().nullable()();
   TextColumn get aiTags => text().nullable()();
-  TextColumn get invoiceImagePaths => text().withDefault(const Constant('[]'))();
+  TextColumn get invoiceImagePaths =>
+      text().withDefault(const Constant('[]'))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
-
 }
 
 /// 存放位置表（树状层级）。
@@ -57,13 +58,13 @@ class Locations extends Table {
   TextColumn get parentId => text().nullable()();
   TextColumn get description => text().nullable()();
   TextColumn get imagePath => text().nullable()();
+  TextColumn get icon => text().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
   @override
   Set<Column> get primaryKey => {id};
-
 }
 
 /// 分类表。
@@ -79,7 +80,6 @@ class Categories extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
-
 }
 
 /// 转卖记录表。
@@ -100,7 +100,6 @@ class SaleRecords extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
-
 }
 
 /// 物品事件表。
@@ -119,7 +118,6 @@ class ItemEvents extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
-
 }
 
 /// 键值设置表。
@@ -130,5 +128,4 @@ class Settings extends Table {
 
   @override
   Set<Column> get primaryKey => {key};
-
 }

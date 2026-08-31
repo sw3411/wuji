@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+
+import 'theme.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -51,7 +53,9 @@ class ImageStore {
   static Future<String?> _save(XFile file) async {
     try {
       final dir = await _imageDir();
-      final ext = p.extension(file.path).isEmpty ? '.jpg' : p.extension(file.path);
+      final ext = p.extension(file.path).isEmpty
+          ? '.jpg'
+          : p.extension(file.path);
       final name = '${_uuid.v4()}$ext';
       final target = p.join(dir.path, name);
       await File(file.path).copy(target);
@@ -107,7 +111,13 @@ class ImageStore {
 
 /// 图片加载失败时回退到默认图。
 class ItemImage extends StatelessWidget {
-  const ItemImage(this.path, {super.key, this.icon, this.size, this.borderRadius});
+  const ItemImage(
+    this.path, {
+    super.key,
+    this.icon,
+    this.size,
+    this.borderRadius,
+  });
 
   final String? path;
   final IconData? icon;
@@ -123,14 +133,15 @@ class ItemImage extends StatelessWidget {
       // 按显示尺寸解码，避免大图全尺寸解码造成滚动掉帧。
       final cacheWidth = expand
           ? (MediaQuery.sizeOf(context).width *
-                  MediaQuery.devicePixelRatioOf(context))
-              .round()
-              .clamp(64, 1920)
+                    MediaQuery.devicePixelRatioOf(context))
+                .round()
+                .clamp(64, 1920)
           : size == null
-              ? null
-              : (size! * MediaQuery.devicePixelRatioOf(context))
-                  .round()
-                  .clamp(64, 1440);
+          ? null
+          : (size! * MediaQuery.devicePixelRatioOf(context)).round().clamp(
+              64,
+              1440,
+            );
       child = ClipRRect(
         borderRadius: radius,
         child: Image.file(
@@ -153,16 +164,31 @@ class ItemImage extends StatelessWidget {
   }
 
   Widget _fallback(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    // 彩色占位：薄荷 tint 底 + 主题色 icon（告别纯白灰块）。
+    final tint = dark ? AppTheme.greenLight : AppTheme.green;
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: borderRadius == null ? null : BorderRadius.circular(borderRadius!),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            tint.withValues(alpha: 0.16),
+            tint.withValues(alpha: 0.07),
+          ],
+        ),
+        borderRadius: borderRadius == null
+            ? null
+            : BorderRadius.circular(borderRadius!),
+        border: Border.all(color: tint.withValues(alpha: 0.22)),
       ),
-      child: Icon(icon ?? Icons.inventory_2_outlined,
-          size: size == null ? 24 : size! * 0.4, color: cs.outline),
+      child: Icon(
+        icon ?? Icons.inventory_2_outlined,
+        size: size == null ? 24 : size! * 0.4,
+        color: tint,
+      ),
     );
   }
 }

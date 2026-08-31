@@ -21,31 +21,39 @@ import 'app_settings.dart';
 
 final dbProvider = Provider<AppDatabase>((ref) => AppDatabase());
 
-final itemRepoProvider =
-    Provider<ItemRepository>((ref) => ItemRepository(ref.read(dbProvider)));
+final itemRepoProvider = Provider<ItemRepository>(
+  (ref) => ItemRepository(ref.read(dbProvider)),
+);
 final locationRepoProvider = Provider<LocationRepository>(
-    (ref) => LocationRepository(ref.read(dbProvider)));
+  (ref) => LocationRepository(ref.read(dbProvider)),
+);
 final categoryRepoProvider = Provider<CategoryRepository>(
-    (ref) => CategoryRepository(ref.read(dbProvider)));
-final saleRepoProvider =
-    Provider<SaleRepository>((ref) => SaleRepository(ref.read(dbProvider)));
+  (ref) => CategoryRepository(ref.read(dbProvider)),
+);
+final saleRepoProvider = Provider<SaleRepository>(
+  (ref) => SaleRepository(ref.read(dbProvider)),
+);
 final settingsRepoProvider = Provider<SettingsRepository>(
-    (ref) => SettingsRepository(ref.read(dbProvider)));
+  (ref) => SettingsRepository(ref.read(dbProvider)),
+);
 
-final backupServiceProvider = Provider<BackupService>((ref) => BackupService(
-      ref.read(dbProvider),
-      ref.read(itemRepoProvider),
-      ref.read(locationRepoProvider),
-      ref.read(categoryRepoProvider),
-      ref.read(saleRepoProvider),
-      ref.read(settingsRepoProvider),
-    ));
+final backupServiceProvider = Provider<BackupService>(
+  (ref) => BackupService(
+    ref.read(dbProvider),
+    ref.read(itemRepoProvider),
+    ref.read(locationRepoProvider),
+    ref.read(categoryRepoProvider),
+    ref.read(saleRepoProvider),
+    ref.read(settingsRepoProvider),
+  ),
+);
 
 // ---------- 设置 ----------
 
 final appSettingsProvider =
     StateNotifierProvider<AppSettingsNotifier, AppSettings>(
-        (ref) => AppSettingsNotifier(ref.read(settingsRepoProvider)));
+      (ref) => AppSettingsNotifier(ref.read(settingsRepoProvider)),
+    );
 
 class AppSettingsNotifier extends StateNotifier<AppSettings> {
   AppSettingsNotifier(this._repo) : super(AppSettings()) {
@@ -71,16 +79,20 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
 // ---------- 基础数据流 ----------
 
 final itemsProvider = StreamProvider<List<Item>>(
-    (ref) => ref.read(itemRepoProvider).watchAll());
+  (ref) => ref.read(itemRepoProvider).watchAll(),
+);
 
 final locationsProvider = StreamProvider<List<Location>>(
-    (ref) => ref.read(locationRepoProvider).watchAll());
+  (ref) => ref.read(locationRepoProvider).watchAll(),
+);
 
 final categoriesProvider = StreamProvider<List<Category>>(
-    (ref) => ref.read(categoryRepoProvider).watchAll());
+  (ref) => ref.read(categoryRepoProvider).watchAll(),
+);
 
 final salesMapProvider = StreamProvider<Map<String, SaleRecord>>(
-    (ref) => ref.read(saleRepoProvider).watchAllByItemId());
+  (ref) => ref.read(saleRepoProvider).watchAllByItemId(),
+);
 
 /// 可见（未隐藏）分类。
 final visibleCategoriesProvider = Provider<List<Category>>((ref) {
@@ -91,7 +103,8 @@ final visibleCategoriesProvider = Provider<List<Category>>((ref) {
 /// 物品筛选状态（退出页面保留，持久化）。
 final itemFilterProvider =
     StateNotifierProvider<ItemFilterController, ItemFilter>(
-        (ref) => ItemFilterController(ref.read(settingsRepoProvider)));
+      (ref) => ItemFilterController(ref.read(settingsRepoProvider)),
+    );
 
 class ItemFilterController extends StateNotifier<ItemFilter> {
   ItemFilterController(this._repo) : super(ItemFilter()) {
@@ -113,16 +126,20 @@ class ItemFilterController extends StateNotifier<ItemFilter> {
   Future<void> clear() async {
     state = ItemFilter();
     await _repo.setJson(
-        SettingsRepository.keyItemFilter, ItemFilter().toJson());
+      SettingsRepository.keyItemFilter,
+      ItemFilter().toJson(),
+    );
   }
 }
 
 /// 应用筛选后的物品列表。
 final filteredItemsProvider = Provider<List<Item>>((ref) {
   final items = ref.watch(itemsProvider).valueOrNull ?? const <Item>[];
-  final sales = ref.watch(salesMapProvider).valueOrNull ?? const <String, SaleRecord>{};
+  final sales =
+      ref.watch(salesMapProvider).valueOrNull ?? const <String, SaleRecord>{};
   final filter = ref.watch(itemFilterProvider);
-  final locations = ref.watch(locationsProvider).valueOrNull ?? const <Location>[];
+  final locations =
+      ref.watch(locationsProvider).valueOrNull ?? const <Location>[];
 
   Set<String> descendants = {};
   if (filter.locationIds.isNotEmpty) {
@@ -131,13 +148,19 @@ final filteredItemsProvider = Provider<List<Item>>((ref) {
       descendants.addAll(tree.descendantIds(id));
     }
   }
-  return applyItemFilter(items, filter, sales, descendantLocationIds: descendants);
+  return applyItemFilter(
+    items,
+    filter,
+    sales,
+    descendantLocationIds: descendants,
+  );
 });
 
 // ---------- AI ----------
 
 final aiConfigProvider = StateNotifierProvider<AiConfigNotifier, AiConfig>(
-    (ref) => AiConfigNotifier(ref.read(settingsRepoProvider)));
+  (ref) => AiConfigNotifier(ref.read(settingsRepoProvider)),
+);
 
 class AiConfigNotifier extends StateNotifier<AiConfig> {
   AiConfigNotifier(this._repo) : super(AiConfig()) {
@@ -146,7 +169,8 @@ class AiConfigNotifier extends StateNotifier<AiConfig> {
 
   final SettingsRepository _repo;
   final FlutterSecureStorage _secure = const FlutterSecureStorage(
-      aOptions: AndroidOptions(encryptedSharedPreferences: true));
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   Future<void> _load() async {
     final json = await _repo.getJson(SettingsRepository.keyAiConfig);
@@ -154,14 +178,15 @@ class AiConfigNotifier extends StateNotifier<AiConfig> {
 
     // 旧版本把 apiKey 明文存在设置表，这里迁移到安全存储。
     var key = await _secure.read(key: _keyApiKey);
-    if ((key == null || key.isEmpty) &&
-        config.apiKey.trim().isNotEmpty) {
+    if ((key == null || key.isEmpty) && config.apiKey.trim().isNotEmpty) {
       key = config.apiKey;
       await _secure.write(key: _keyApiKey, value: key);
     }
     if (config.apiKey.isNotEmpty) {
-      await _repo.setJson(SettingsRepository.keyAiConfig,
-          {...config.toJson(), 'apiKey': ''});
+      await _repo.setJson(SettingsRepository.keyAiConfig, {
+        ...config.toJson(),
+        'apiKey': '',
+      });
     }
     state = AiConfig(
       enabled: config.enabled,
@@ -178,8 +203,10 @@ class AiConfigNotifier extends StateNotifier<AiConfig> {
     state = config;
     // 密钥只进安全存储（钥匙串/Keystore），设置表不落明文。
     await _secure.write(key: _keyApiKey, value: config.apiKey);
-    await _repo.setJson(SettingsRepository.keyAiConfig,
-        {...config.toJson(), 'apiKey': ''});
+    await _repo.setJson(SettingsRepository.keyAiConfig, {
+      ...config.toJson(),
+      'apiKey': '',
+    });
   }
 }
 
@@ -189,7 +216,8 @@ final aiClientProvider = Provider<AiClient>((ref) {
 });
 
 final aiServiceProvider = Provider<AiService>(
-    (ref) => AiService(ref.read(aiClientProvider)));
+  (ref) => AiService(ref.read(aiClientProvider)),
+);
 
 // ---------- 备份提醒 ----------
 

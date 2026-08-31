@@ -19,8 +19,10 @@ class AiMessage {
   /// 多模态原始 content（非空时优先于 [content]）。
   final Map<String, dynamic>? _rawContent;
 
-  Map<String, dynamic> toJson() =>
-      {'role': role, 'content': _rawContent ?? content};
+  Map<String, dynamic> toJson() => {
+    'role': role,
+    'content': _rawContent ?? content,
+  };
 }
 
 /// AI 调用异常。
@@ -42,7 +44,8 @@ class AiClient {
   final AiConfig config;
 
   Uri get _endpoint => Uri.parse(
-      '${config.baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions');
+    '${config.baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions',
+  );
 
   /// 单轮/多轮对话。返回首个回复文本。
   Future<String> chat(
@@ -99,8 +102,9 @@ class AiClient {
       if (choices == null || choices.isEmpty) {
         throw AiException('API 返回格式异常：缺少 choices');
       }
-      final message = (choices.first as Map<String, dynamic>)['message']
-          as Map<String, dynamic>?;
+      final message =
+          (choices.first as Map<String, dynamic>)['message']
+              as Map<String, dynamic>?;
       if (message == null) {
         throw AiException('API 返回格式异常：缺少 message');
       }
@@ -120,8 +124,8 @@ class AiClient {
         'tool_calls': toolCalls,
       });
       for (final call in toolCalls) {
-        final fn = (call as Map<String, dynamic>)['function']
-            as Map<String, dynamic>?;
+        final fn =
+            (call as Map<String, dynamic>)['function'] as Map<String, dynamic>?;
         final id = call['id'] as String? ?? '';
         final name = fn?['name'] as String? ?? '';
         var args = <String, dynamic>{};
@@ -144,8 +148,7 @@ class AiClient {
         conversation.add({
           'role': 'tool',
           'tool_call_id': id,
-          'content':
-              result.length > 6000 ? result.substring(0, 6000) : result,
+          'content': result.length > 6000 ? result.substring(0, 6000) : result,
         });
       }
     }
@@ -153,13 +156,11 @@ class AiClient {
   }
 
   /// 便捷方法：system + user 单轮。
-  Future<String> ask(
-    String system,
-    String user, {
-    bool jsonMode = false,
-  }) =>
-      chat([AiMessage('system', system), AiMessage('user', user)],
-          jsonMode: jsonMode);
+  Future<String> ask(String system, String user, {bool jsonMode = false}) =>
+      chat([
+        AiMessage('system', system),
+        AiMessage('user', user),
+      ], jsonMode: jsonMode);
 
   /// 多模态单轮：user 消息附带一张 base64 图片（OpenAI 兼容 image_url 协议）。
   Future<String> askWithImage(
@@ -179,23 +180,25 @@ class AiClient {
         },
       ],
     };
-    return chat(
-      [AiMessage('system', system), AiMessage.raw('user', multimodal)],
-      jsonMode: jsonMode,
-    );
+    return chat([
+      AiMessage('system', system),
+      AiMessage.raw('user', multimodal),
+    ], jsonMode: jsonMode);
   }
 
   Future<Map<String, dynamic>> _post(Map<String, dynamic> body) async {
     http.Response resp;
     try {
-      resp = await http.post(
-        _endpoint,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${config.apiKey}',
-        },
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 90));
+      resp = await http
+          .post(
+            _endpoint,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${config.apiKey}',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 90));
     } catch (e) {
       throw AiException('网络请求失败：$e');
     }
@@ -209,7 +212,9 @@ class AiClient {
         }
       } catch (_) {}
       throw AiExceptionWithStatus(
-          resp.statusCode, 'API 返回 ${resp.statusCode}${detail.isEmpty ? '' : '：$detail'}');
+        resp.statusCode,
+        'API 返回 ${resp.statusCode}${detail.isEmpty ? '' : '：$detail'}',
+      );
     }
     return jsonDecode(resp.body) as Map<String, dynamic>;
   }
@@ -221,4 +226,3 @@ class AiExceptionWithStatus extends AiException {
 
   final int statusCode;
 }
-

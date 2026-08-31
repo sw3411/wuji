@@ -43,58 +43,51 @@ class SaleRecord {
     int? platformFee,
     int? otherCost,
     String? notes,
-  }) =>
-      SaleRecord(
-        id: id,
-        itemId: itemId,
-        salePrice: salePrice ?? this.salePrice,
-        saleDate: saleDate ?? this.saleDate,
-        platform: platform ?? this.platform,
-        buyerNote: buyerNote ?? this.buyerNote,
-        shippingCost: shippingCost ?? this.shippingCost,
-        platformFee: platformFee ?? this.platformFee,
-        otherCost: otherCost ?? this.otherCost,
-        notes: notes ?? this.notes,
-        createdAt: createdAt,
-        updatedAt: DateTime.now(),
-      );
+  }) => SaleRecord(
+    id: id,
+    itemId: itemId,
+    salePrice: salePrice ?? this.salePrice,
+    saleDate: saleDate ?? this.saleDate,
+    platform: platform ?? this.platform,
+    buyerNote: buyerNote ?? this.buyerNote,
+    shippingCost: shippingCost ?? this.shippingCost,
+    platformFee: platformFee ?? this.platformFee,
+    otherCost: otherCost ?? this.otherCost,
+    notes: notes ?? this.notes,
+    createdAt: createdAt,
+    updatedAt: DateTime.now(),
+  );
 
   factory SaleRecord.fromJson(Map<String, dynamic> json) => SaleRecord(
-        id: json['id'] as String,
-        itemId: json['itemId'] as String,
-        salePrice: (json['salePrice'] as num).toInt(),
-        saleDate: DateTime.parse(json['saleDate'] as String),
-        platform: json['platform'] as String?,
-        buyerNote: json['buyerNote'] as String?,
-        shippingCost: (json['shippingCost'] as num?)?.toInt() ?? 0,
-        platformFee: (json['platformFee'] as num?)?.toInt() ?? 0,
-        otherCost: (json['otherCost'] as num?)?.toInt() ?? 0,
-        notes: json['notes'] as String?,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        updatedAt: DateTime.parse(json['updatedAt'] as String),
-      );
+    id: json['id'] as String,
+    itemId: json['itemId'] as String,
+    salePrice: (json['salePrice'] as num).toInt(),
+    saleDate: DateTime.parse(json['saleDate'] as String),
+    platform: json['platform'] as String?,
+    buyerNote: json['buyerNote'] as String?,
+    shippingCost: (json['shippingCost'] as num?)?.toInt() ?? 0,
+    platformFee: (json['platformFee'] as num?)?.toInt() ?? 0,
+    otherCost: (json['otherCost'] as num?)?.toInt() ?? 0,
+    notes: json['notes'] as String?,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+    updatedAt: DateTime.parse(json['updatedAt'] as String),
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'itemId': itemId,
-        'salePrice': salePrice,
-        'saleDate': saleDate.toIso8601String(),
-        'platform': platform,
-        'buyerNote': buyerNote,
-        'shippingCost': shippingCost,
-        'platformFee': platformFee,
-        'otherCost': otherCost,
-        'notes': notes,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'itemId': itemId,
+    'salePrice': salePrice,
+    'saleDate': saleDate.toIso8601String(),
+    'platform': platform,
+    'buyerNote': buyerNote,
+    'shippingCost': shippingCost,
+    'platformFee': platformFee,
+    'otherCost': otherCost,
+    'notes': notes,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 }
 
 /// 转卖常用平台。
-const List<String> kSalePlatforms = [
-  '闲鱼',
-  '转转',
-  '爱回收',
-  '线下交易',
-  '其他',
-];
+const List<String> kSalePlatforms = ['闲鱼', '转转', '爱回收', '线下交易', '其他'];

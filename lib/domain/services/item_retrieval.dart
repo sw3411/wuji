@@ -45,8 +45,7 @@ class ItemRetrieval {
     final scores = <String, double>{};
     double scoreOf(Item i) => scores[i.id] ?? 0;
 
-    void add(Item i, double v) =>
-        scores[i.id] = scoreOf(i) + v;
+    void add(Item i, double v) => scores[i.id] = scoreOf(i) + v;
 
     for (final i in active) {
       final name = i.name.toLowerCase();
@@ -77,9 +76,7 @@ class ItemRetrieval {
       }
     }
 
-    final matched = active
-        .where((i) => scoreOf(i) > 0)
-        .toList()
+    final matched = active.where((i) => scoreOf(i) > 0).toList()
       ..sort((a, b) => scoreOf(b).compareTo(scoreOf(a)));
 
     final hints = subjectHints
@@ -111,34 +108,47 @@ class ItemRetrieval {
 
     final ownedTotal = owned.fold<int>(0, (s, i) => s + i.purchasePrice);
     buf.writeln(
-        '总览：历史 ${items.length} 件；当前持有 ${owned.length} 件，购买总额 ${_yuan(ownedTotal)}元。');
+      '总览：历史 ${items.length} 件；当前持有 ${owned.length} 件，购买总额 ${_yuan(ownedTotal)}元。',
+    );
 
-    final byPrice = [...owned]..sort((a, b) => b.purchasePrice.compareTo(a.purchasePrice));
+    final byPrice = [...owned]
+      ..sort((a, b) => b.purchasePrice.compareTo(a.purchasePrice));
     buf.writeln('最贵前5：${_namePrice(byPrice.take(5))}');
 
-    final byDaily = [...owned]..sort((a, b) => ItemCalculator.dailyCost(b,
-            sales[b.id], now: now_)
-        .compareTo(ItemCalculator.dailyCost(a, sales[a.id], now: now_)));
+    final byDaily = [...owned]
+      ..sort(
+        (a, b) => ItemCalculator.dailyCost(
+          b,
+          sales[b.id],
+          now: now_,
+        ).compareTo(ItemCalculator.dailyCost(a, sales[a.id], now: now_)),
+      );
     buf.writeln(
-        '日均最高3：${byDaily.take(3).map((i) => '${i.name}(${_yuan(ItemCalculator.dailyCost(i, sales[i.id], now: now_))}元/天)').join('、')}');
+      '日均最高3：${byDaily.take(3).map((i) => '${i.name}(${_yuan(ItemCalculator.dailyCost(i, sales[i.id], now: now_))}元/天)').join('、')}',
+    );
 
     final catMap = <String, List<Item>>{};
     for (final i in owned) {
       catMap.putIfAbsent(i.categoryName, () => []).add(i);
     }
     final cats = catMap.entries.toList()
-      ..sort((a, b) =>
-          b.value.fold<int>(0, (s, i) => s + i.purchasePrice)
-              .compareTo(a.value.fold<int>(0, (s, i) => s + i.purchasePrice)));
-    buf.writeln('分类金额top6：${cats.take(6).map((e) {
-      final total = e.value.fold<int>(0, (s, i) => s + i.purchasePrice);
-      return '${e.key}(${e.value.length}件/${_yuan(total)}元)';
-    }).join('、')}');
+      ..sort(
+        (a, b) => b.value
+            .fold<int>(0, (s, i) => s + i.purchasePrice)
+            .compareTo(a.value.fold<int>(0, (s, i) => s + i.purchasePrice)),
+      );
+    buf.writeln(
+      '分类金额top6：${cats.take(6).map((e) {
+        final total = e.value.fold<int>(0, (s, i) => s + i.purchasePrice);
+        return '${e.key}(${e.value.length}件/${_yuan(total)}元)';
+      }).join('、')}',
+    );
 
-    final idle =
-        items.where((i) => i.status == ItemStatus.idle).toList();
+    final idle = items.where((i) => i.status == ItemStatus.idle).toList();
     if (idle.isNotEmpty) {
-      buf.writeln('闲置${idle.length}件：${idle.take(8).map((i) => i.name).join('、')}');
+      buf.writeln(
+        '闲置${idle.length}件：${idle.take(8).map((i) => i.name).join('、')}',
+      );
     }
 
     final warranty = items.where((i) {
@@ -146,25 +156,30 @@ class ItemRetrieval {
       return s == WarrantyState.expiringSoon || s == WarrantyState.expired;
     }).toList();
     if (warranty.isNotEmpty) {
-      buf.writeln('保修将到期/已过期：${warranty.take(8).map((i) {
-        final end = i.effectiveWarrantyEndDate!;
-        return '${i.name}(${end.month}/${end.day})';
-      }).join('、')}');
+      buf.writeln(
+        '保修将到期/已过期：${warranty.take(8).map((i) {
+          final end = i.effectiveWarrantyEndDate!;
+          return '${i.name}(${end.month}/${end.day})';
+        }).join('、')}',
+      );
     }
 
     final monthStart = DateTime(now_.year, now_.month);
-    final recent =
-        items.where((i) => !i.purchaseDate.isBefore(monthStart)).toList();
+    final recent = items
+        .where((i) => !i.purchaseDate.isBefore(monthStart))
+        .toList();
     if (recent.isNotEmpty) {
-      buf.writeln('本月新增${recent.length}件：${recent.take(8).map((i) => i.name).join('、')}');
+      buf.writeln(
+        '本月新增${recent.length}件：${recent.take(8).map((i) => i.name).join('、')}',
+      );
     }
 
     final sold = items.where((i) => i.status == ItemStatus.sold).toList();
     if (sold.isNotEmpty) {
       final income = sold.fold<int>(
-          0,
-          (s, i) =>
-              s + (sales[i.id]?.netIncome ?? 0));
+        0,
+        (s, i) => s + (sales[i.id]?.netIncome ?? 0),
+      );
       buf.writeln('已转卖${sold.length}件，回收净收入${_yuan(income)}元。');
     }
 

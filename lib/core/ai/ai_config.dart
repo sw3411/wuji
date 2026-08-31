@@ -14,21 +14,22 @@ class AiConfig {
   String model;
   double temperature;
 
-  bool get isReady => enabled && apiKey.trim().isNotEmpty && baseUrl.trim().isNotEmpty;
+  bool get isReady =>
+      enabled && apiKey.trim().isNotEmpty && baseUrl.trim().isNotEmpty;
 
   factory AiConfig.fromJson(Map<String, dynamic> json) => AiConfig(
-        enabled: json['enabled'] as bool? ?? false,
-        baseUrl: json['baseUrl'] as String? ?? 'https://api.openai.com/v1',
-        apiKey: json['apiKey'] as String? ?? '',
-        model: json['model'] as String? ?? 'gpt-4o-mini',
-        temperature: (json['temperature'] as num?)?.toDouble() ?? 0.3,
-      );
+    enabled: json['enabled'] as bool? ?? false,
+    baseUrl: json['baseUrl'] as String? ?? 'https://api.openai.com/v1',
+    apiKey: json['apiKey'] as String? ?? '',
+    model: json['model'] as String? ?? 'gpt-4o-mini',
+    temperature: (json['temperature'] as num?)?.toDouble() ?? 0.3,
+  );
 
   Map<String, dynamic> toJson() => {
-        'enabled': enabled,
-        'baseUrl': baseUrl,
-        'apiKey': apiKey,
-        'model': model,
-        'temperature': temperature,
-      };
+    'enabled': enabled,
+    'baseUrl': baseUrl,
+    'apiKey': apiKey,
+    'model': model,
+    'temperature': temperature,
+  };
 }

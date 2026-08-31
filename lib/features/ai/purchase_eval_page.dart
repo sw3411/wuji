@@ -61,22 +61,23 @@ class _PurchaseEvalPageState extends ConsumerState<PurchaseEvalPage> {
       _result = null;
     });
     try {
-      final items =
-          ref.read(itemsProvider).valueOrNull ?? const <Item>[];
+      final items = ref.read(itemsProvider).valueOrNull ?? const <Item>[];
       final categories =
           ref.read(categoriesProvider).valueOrNull ?? const <Category>[];
-      final category =
-          categories.where((c) => c.id == _categoryId).firstOrNull;
-      final text = await ref.read(aiServiceProvider).purchaseEvaluation(
+      final category = categories.where((c) => c.id == _categoryId).firstOrNull;
+      final text = await ref
+          .read(aiServiceProvider)
+          .purchaseEvaluation(
             name: name,
             priceCents: price,
             expectMonths: _months,
             frequency: _frequency!,
             categoryName: category?.name,
-            notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+            notes: _notesCtrl.text.trim().isEmpty
+                ? null
+                : _notesCtrl.text.trim(),
             items: items,
-            budgetCents:
-                ref.read(appSettingsProvider).monthlyBudgetCents,
+            budgetCents: ref.read(appSettingsProvider).monthlyBudgetCents,
           );
       if (mounted) setState(() => _result = text);
     } catch (e) {
@@ -101,8 +102,10 @@ class _PurchaseEvalPageState extends ConsumerState<PurchaseEvalPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('配置 AI 后，下单前先问一句“值不值得买”',
-                      style: AppTheme.caption(cs.onSurfaceVariant)),
+                  Text(
+                    '配置 AI 后，下单前先问一句“值不值得买”',
+                    style: AppTheme.caption(cs.onSurfaceVariant),
+                  ),
                   const SizedBox(height: 8),
                   FilledButton.tonal(
                     onPressed: () => context.push('/settings/ai'),
@@ -131,8 +134,9 @@ class _PurchaseEvalPageState extends ConsumerState<PurchaseEvalPage> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: _priceCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: '预期价格（元）*',
@@ -150,14 +154,18 @@ class _PurchaseEvalPageState extends ConsumerState<PurchaseEvalPage> {
                     prefixIcon: Icon(Icons.hourglass_bottom_outlined),
                   ),
                   items: [3, 6, 12, 24, 36, 60, 120]
-                      .map((m) => DropdownMenuItem(
+                      .map(
+                        (m) => DropdownMenuItem(
                           value: m,
-                          child: Text(m >= 12
-                              ? '${(m / 12).toStringAsFixed(m % 12 == 0 ? 0 : 1)} 年'
-                              : '$m 个月')))
+                          child: Text(
+                            m >= 12
+                                ? '${(m / 12).toStringAsFixed(m % 12 == 0 ? 0 : 1)} 年'
+                                : '$m 个月',
+                          ),
+                        ),
+                      )
                       .toList(),
-                  onChanged: (v) =>
-                      setState(() => _months = v ?? _months),
+                  onChanged: (v) => setState(() => _months = v ?? _months),
                 ),
                 const SizedBox(height: 14),
 
@@ -169,8 +177,9 @@ class _PurchaseEvalPageState extends ConsumerState<PurchaseEvalPage> {
                     prefixIcon: Icon(Icons.speed_outlined),
                   ),
                   items: UsageFrequency.values
-                      .map((f) => DropdownMenuItem(
-                          value: f, child: Text(f.label)))
+                      .map(
+                        (f) => DropdownMenuItem(value: f, child: Text(f.label)),
+                      )
                       .toList(),
                   onChanged: (v) =>
                       setState(() => _frequency = v ?? _frequency),
@@ -186,8 +195,9 @@ class _PurchaseEvalPageState extends ConsumerState<PurchaseEvalPage> {
                   ),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('不选择')),
-                    ...categories.map((c) => DropdownMenuItem(
-                        value: c.id, child: Text(c.name))),
+                    ...categories.map(
+                      (c) => DropdownMenuItem(value: c.id, child: Text(c.name)),
+                    ),
                   ],
                   onChanged: (v) => setState(() => _categoryId = v),
                 ),
@@ -207,24 +217,30 @@ class _PurchaseEvalPageState extends ConsumerState<PurchaseEvalPage> {
                     padding: const EdgeInsets.only(top: 12),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.primary.withValues(alpha: 0.07),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.calculate_outlined,
-                              size: 16, color: cs.primary),
+                          Icon(
+                            Icons.calculate_outlined,
+                            size: 16,
+                            color: cs.primary,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               '预计使用 ${estimate.$1.toStringAsFixed(0)} 次，'
                               '单次使用成本约 ${estimate.$2.toStringAsFixed(1)} 元',
                               style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: cs.primary),
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: cs.primary,
+                              ),
                             ),
                           ),
                         ],
@@ -240,7 +256,8 @@ class _PurchaseEvalPageState extends ConsumerState<PurchaseEvalPage> {
                         ? const SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2))
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : const Icon(Icons.auto_awesome, size: 18),
                     label: Text(_loading ? '评估中…' : '值不值得买？'),
                   ),

@@ -64,8 +64,26 @@ class AiService {
   final AiClient client;
 
   /// 一句话解析物品草稿。传入 [imageBase64] 时启用视觉识别（拍照添加）。
-  Future<AiItemDraft> parseItem(String input, List<Category> categories,
-      {String? imageBase64}) async {
+  /// 一句话解析物品草稿（单条便捷入口）。
+  Future<AiItemDraft> parseItem(
+    String input,
+    List<Category> categories, {
+    String? imageBase64,
+  }) async {
+    final list = await parseItems(input, categories,
+        imageBase64: imageBase64);
+    if (list.isEmpty) {
+      throw AiException('AI 未识别出任何物品');
+    }
+    return list.first;
+  }
+
+  /// 批量解析：一句话多件物品拆成多条草稿（风衣8999、短袖399…）。
+  Future<List<AiItemDraft>> parseItems(
+    String input,
+    List<Category> categories, {
+    String? imageBase64,
+  }) async {
     final names = categories.map((c) => c.name).toList();
     var system = AiPrompts.itemParseSystem(names);
     var userText = AiPrompts.itemParseUserText(input);
@@ -77,19 +95,46 @@ class AiService {
     }
     final raw = imageBase64 == null
         ? await client.ask(system, userText, jsonMode: true)
-        : await client.askWithImage(system, userText, imageBase64,
-            jsonMode: true);
-    final json = _extractJson(raw);
-    if (json == null) {
+        : await client.askWithImage(
+            system,
+            userText,
+            imageBase64,
+            jsonMode: true,
+          );
+
+    // 兼容 {"items":[...]}、[...] 与旧版单对象三种形态。
+    final List<dynamic> arr;
+    final decoded = _tryDecode(raw);
+    if (decoded is Map<String, dynamic>) {
+      final inner = decoded['items'] ?? decoded['data'];
+      if (inner is List) {
+        arr = inner;
+      } else {
+        arr = [decoded];
+      }
+    } else if (decoded is List) {
+      arr = decoded;
+    } else {
       throw AiException('AI 返回内容无法解析为 JSON');
     }
+
+    return arr
+        .map((e) => e is Map<String, dynamic> ? _draftFromJson(e) : null)
+        .whereType<AiItemDraft>()
+        .toList();
+  }
+
+  /// 单个草稿 JSON → AiItemDraft。
+  static AiItemDraft? _draftFromJson(Map<String, dynamic> json) {
+    final name = _str(json['name']);
+    if (name == null) return null;
     DateTime? date;
     final dateStr = json['purchaseDate'];
     if (dateStr is String && dateStr.length >= 10) {
       date = DateTime.tryParse(dateStr.substring(0, 10));
     }
     return AiItemDraft(
-      name: _str(json['name']),
+      name: name,
       categoryName: _str(json['category']),
       price: _num(json['price']),
       purchaseDate: date,
@@ -107,6 +152,35 @@ class AiService {
           .toList(),
       warrantyMonths: _int(json['warrantyMonths']),
     );
+  }
+
+  /// 宽松 JSON 解码（剥 markdown 围栏）。
+  static dynamic _tryDecode(String raw) {
+    var text = raw.trim();
+    if (text.startsWith('```')) {
+      text = text
+          .replaceAll(RegExp(r'^```[a-zA-Z]*\n?'), '')
+          .replaceAll(RegExp(r'\n?```$'), '')
+          .trim();
+    }
+    try {
+      return jsonDecode(text);
+    } catch (_) {
+      final start = text.indexOf('{');
+      final startArr = text.indexOf('[');
+      final from = (start >= 0 && (startArr < 0 || start < startArr))
+          ? start
+          : startArr;
+      final endObj = text.lastIndexOf('}');
+      final endArr = text.lastIndexOf(']');
+      final to = endObj > endArr ? endObj : endArr;
+      if (from >= 0 && to > from) {
+        try {
+          return jsonDecode(text.substring(from, to + 1));
+        } catch (_) {}
+      }
+      return null;
+    }
   }
 
   /// AI 二手残值估价（详情页入口）。
@@ -145,24 +219,29 @@ class AiService {
     final now_ = now ?? DateTime.now();
     final weekAgo = now_.subtract(const Duration(days: 7));
     final active = items.where((i) => !i.isDeleted).toList();
-    final newItems =
-        active.where((i) => !i.purchaseDate.isBefore(weekAgo)).toList();
+    final newItems = active
+        .where((i) => !i.purchaseDate.isBefore(weekAgo))
+        .toList();
     final soldThisWeek = active
-        .where((i) =>
-            i.status == ItemStatus.sold &&
-            sales[i.id] != null &&
-            !sales[i.id]!.saleDate.isBefore(weekAgo))
+        .where(
+          (i) =>
+              i.status == ItemStatus.sold &&
+              sales[i.id] != null &&
+              !sales[i.id]!.saleDate.isBefore(weekAgo),
+        )
         .toList();
     final newSpend = newItems.fold<int>(0, (s, i) => s + i.purchasePrice);
     final saleIncome = soldThisWeek.fold<int>(
-        0, (s, i) => s + (sales[i.id]?.netIncome ?? 0));
+      0,
+      (s, i) => s + (sales[i.id]?.netIncome ?? 0),
+    );
     final newIdle = newItems.where((i) => i.status == ItemStatus.idle).length;
     final lines = [
       '统计周期：${_fmtDate(weekAgo)} 至 ${_fmtDate(now_)}',
       '本周新增 ${newItems.length} 件，共花 ${(newSpend / 100).toStringAsFixed(0)} 元'
-      '${newItems.isEmpty ? '' : '：${newItems.take(8).map((i) => '${i.name}(${(i.purchasePrice / 100).toStringAsFixed(0)}元)').join('、')}${newItems.length > 8 ? '等' : ''}'}。',
+          '${newItems.isEmpty ? '' : '：${newItems.take(8).map((i) => '${i.name}(${(i.purchasePrice / 100).toStringAsFixed(0)}元)').join('、')}${newItems.length > 8 ? '等' : ''}'}。',
       '本周转卖 ${soldThisWeek.length} 件，净回收 ${(saleIncome / 100).toStringAsFixed(0)} 元'
-      '${soldThisWeek.isEmpty ? '' : '：${soldThisWeek.take(5).map((i) => i.name).join('、')}'}。',
+          '${soldThisWeek.isEmpty ? '' : '：${soldThisWeek.take(5).map((i) => i.name).join('、')}'}。',
       if (newIdle > 0) '新增物品中已有 $newIdle 件标记为闲置。',
       '（如果以上均为 0，说明本周没有物品变动，输出鼓励用户记录或盘点即可。）',
     ];
@@ -179,10 +258,14 @@ class AiService {
       ..sort((a, b) => b.purchaseTotal.compareTo(a.purchaseTotal));
     final catText = cats
         .take(8)
-        .map((c) => '${c.categoryName} ${c.count}件共${(c.purchaseTotal / 100).toStringAsFixed(0)}元')
+        .map(
+          (c) =>
+              '${c.categoryName} ${c.count}件共${(c.purchaseTotal / 100).toStringAsFixed(0)}元',
+        )
         .join('；');
-    final idle =
-        items.where((i) => !i.isDeleted && i.status == ItemStatus.idle).length;
+    final idle = items
+        .where((i) => !i.isDeleted && i.status == ItemStatus.idle)
+        .length;
     final data =
         '当前拥有 ${overview.ownedCount} 件物品，购买总额 ${(overview.ownedPurchaseTotal / 100).toStringAsFixed(0)} 元；'
         '历史共记录 ${overview.totalCount} 件，历史购买总额 ${(overview.historyPurchaseTotal / 100).toStringAsFixed(0)} 元；'
@@ -205,7 +288,8 @@ class AiService {
       (d) => d.id == dimensionId,
       orElse: () => throw AiException('未知洞察维度'),
     );
-    final system = '${AiPrompts.systemBase}\n'
+    final system =
+        '${AiPrompts.systemBase}\n'
         '你是用户的私人消费顾问。任务：${dim.systemPrompt}\n'
         '你可以调用工具主动查询用户的本地物品数据（RAG）：需要什么信息就查什么，'
         '通常先 get_stats 看全局，再按需用 query_items 等工具深入。\n'
@@ -222,8 +306,12 @@ class AiService {
     } on AiExceptionWithStatus catch (e) {
       // 服务商不支持 tools（通常返回 400）：降级为一次性注入上下文。
       if (e.statusCode != 400) rethrow;
-      final context = buildInsightContext(items, sales, insights,
-          budget: budget);
+      final context = buildInsightContext(
+        items,
+        sales,
+        insights,
+        budget: budget,
+      );
       final extra = <String>[];
       if (dim.needsDuplication) {
         extra.add('[疑似重复分组]\n${buildDuplicationHints(items)}');
@@ -240,11 +328,15 @@ class AiService {
       if (dim.needsMonthly) {
         extra.add('[近6月月度数据]\n${buildMonthlySummary(items)}');
       }
-      final fullContext =
-          extra.isEmpty ? context : '$context\n\n${extra.join('\n\n')}';
+      final fullContext = extra.isEmpty
+          ? context
+          : '$context\n\n${extra.join('\n\n')}';
       return client.ask(
-        system.replaceAll('你可以调用工具主动查询用户的本地物品数据（RAG）：'
-            '需要什么信息就查什么，通常先 get_stats 看全局，再按需用 query_items 等工具深入。\n', ''),
+        system.replaceAll(
+          '你可以调用工具主动查询用户的本地物品数据（RAG）：'
+              '需要什么信息就查什么，通常先 get_stats 看全局，再按需用 query_items 等工具深入。\n',
+          '',
+        ),
         '用户物品数据如下，请据此完成任务：\n$fullContext',
       );
     }
@@ -252,57 +344,57 @@ class AiService {
 
   /// 洞察维度的本地查询工具定义（OpenAI function calling 格式）。
   static List<Map<String, dynamic>> _insightTools() => [
-        {
-          'type': 'function',
-          'function': {
-            'name': 'get_stats',
-            'description': '获取物品总览统计：数量、金额、分类分布、高日均物品、闲置、保修、体检',
-            'parameters': {'type': 'object', 'properties': {}},
+    {
+      'type': 'function',
+      'function': {
+        'name': 'get_stats',
+        'description': '获取物品总览统计：数量、金额、分类分布、高日均物品、闲置、保修、体检',
+        'parameters': {'type': 'object', 'properties': {}},
+      },
+    },
+    {
+      'type': 'function',
+      'function': {
+        'name': 'query_items',
+        'description': '按条件查询物品明细（名称/分类/状态/价格区间/关键词），返回价格、品牌、已用天数、日均',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'keyword': {'type': 'string', 'description': '名称/品牌/型号关键词'},
+            'category': {'type': 'string', 'description': '分类名，如 手机数码'},
+            'status': {'type': 'string', 'description': '状态，如 使用中/闲置/已转卖'},
+            'minPrice': {'type': 'number', 'description': '最低价格（元）'},
+            'maxPrice': {'type': 'number', 'description': '最高价格（元）'},
+            'limit': {'type': 'integer', 'description': '返回条数，默认 30'},
           },
         },
-        {
-          'type': 'function',
-          'function': {
-            'name': 'query_items',
-            'description': '按条件查询物品明细（名称/分类/状态/价格区间/关键词），返回价格、品牌、已用天数、日均',
-            'parameters': {
-              'type': 'object',
-              'properties': {
-                'keyword': {'type': 'string', 'description': '名称/品牌/型号关键词'},
-                'category': {'type': 'string', 'description': '分类名，如 手机数码'},
-                'status': {'type': 'string', 'description': '状态，如 使用中/闲置/已转卖'},
-                'minPrice': {'type': 'number', 'description': '最低价格（元）'},
-                'maxPrice': {'type': 'number', 'description': '最高价格（元）'},
-                'limit': {'type': 'integer', 'description': '返回条数，默认 30'},
-              },
-            },
-          },
-        },
-        {
-          'type': 'function',
-          'function': {
-            'name': 'find_duplicates',
-            'description': '找出疑似重复的物品分组（同分类多件、同品牌多件），用于判断功能重复',
-            'parameters': {'type': 'object', 'properties': {}},
-          },
-        },
-        {
-          'type': 'function',
-          'function': {
-            'name': 'get_sold_records',
-            'description': '获取已转卖物品明细：购价、卖价、净收入，用于保值分析',
-            'parameters': {'type': 'object', 'properties': {}},
-          },
-        },
-        {
-          'type': 'function',
-          'function': {
-            'name': 'get_monthly_trend',
-            'description': '获取近 6 个月每月新增件数与购买金额',
-            'parameters': {'type': 'object', 'properties': {}},
-          },
-        },
-      ];
+      },
+    },
+    {
+      'type': 'function',
+      'function': {
+        'name': 'find_duplicates',
+        'description': '找出疑似重复的物品分组（同分类多件、同品牌多件），用于判断功能重复',
+        'parameters': {'type': 'object', 'properties': {}},
+      },
+    },
+    {
+      'type': 'function',
+      'function': {
+        'name': 'get_sold_records',
+        'description': '获取已转卖物品明细：购价、卖价、净收入，用于保值分析',
+        'parameters': {'type': 'object', 'properties': {}},
+      },
+    },
+    {
+      'type': 'function',
+      'function': {
+        'name': 'get_monthly_trend',
+        'description': '获取近 6 个月每月新增件数与购买金额',
+        'parameters': {'type': 'object', 'properties': {}},
+      },
+    },
+  ];
 
   /// 本地执行 AI 的工具调用。
   Future<String> _executeTool(
@@ -316,7 +408,8 @@ class AiService {
     switch (name) {
       case 'get_stats':
         return Future.value(
-            buildInsightContext(items, sales, insights, budget: budget));
+          buildInsightContext(items, sales, insights, budget: budget),
+        );
       case 'find_duplicates':
         return Future.value(buildDuplicationHints(items));
       case 'get_sold_records':
@@ -335,10 +428,12 @@ class AiService {
           if (keyword != null && keyword.isNotEmpty) {
             final k = keyword.toLowerCase();
             matched = matched
-                .where((i) =>
-                    i.name.toLowerCase().contains(k) ||
-                    (i.brand ?? '').toLowerCase().contains(k) ||
-                    (i.model ?? '').toLowerCase().contains(k))
+                .where(
+                  (i) =>
+                      i.name.toLowerCase().contains(k) ||
+                      (i.brand ?? '').toLowerCase().contains(k) ||
+                      (i.model ?? '').toLowerCase().contains(k),
+                )
                 .toList();
           }
           if (category != null && category.isNotEmpty) {
@@ -362,8 +457,12 @@ class AiService {
                 .toList();
           }
           final header = '命中 ${matched.length} 件';
-          final body = buildItemRoster(matched, sales,
-              ownedOnly: false, limit: limit);
+          final body = buildItemRoster(
+            matched,
+            sales,
+            ownedOnly: false,
+            limit: limit,
+          );
           return Future.value('$header\n$body');
         }
       default:
@@ -382,7 +481,8 @@ class AiService {
     }
     final context = buildInsightContext(items, sales, insights);
 
-    final system = '${AiPrompts.systemBase}\n'
+    final system =
+        '${AiPrompts.systemBase}\n'
         '你是用户的私人消费顾问。根据用户提供的物品数据，输出中文洞察，格式为四个小节（用「1. 2. 3. 4.」编号）：\n'
         '1. 消费结构归纳（钱主要花在哪）\n'
         '2. 花费集中点与优化空间（结合日均成本高的物品）\n'
@@ -403,7 +503,7 @@ class AiService {
     List<String> subjectHints = const [],
     Map<String, SaleRecord> sales = const {},
     Future<String> Function(String toolName, Map<String, dynamic> args)?
-        actionHandler,
+    actionHandler,
   }) async {
     final active = items.where((i) => !i.isDeleted).toList();
     if (active.isEmpty) {
@@ -418,15 +518,18 @@ class AiService {
     final detail = retrieved.matched.isEmpty
         ? '（本次检索没有命中具体物品，请看统计摘要）'
         : retrieved.matched
-            .map((i) => '- ${i.name}｜id:${i.id}｜分类:${i.categoryName}｜'
-                '价格:${(i.purchasePrice / 100).toStringAsFixed(1)}元｜'
-                '购买日:${_fmtDate(i.purchaseDate)}｜状态:${i.status.label}｜'
-                '位置:${i.locationName ?? '未设置'}｜'
-                '品牌:${i.brand ?? '-'}｜型号:${i.model ?? '-'}｜'
-                '频次:${i.usageFrequency?.label ?? '-'}｜'
-                '${i.effectiveWarrantyEndDate == null ? '无保修' : '保修至 ${_fmtDate(i.effectiveWarrantyEndDate!)}'}'
-                '${i.notes != null && i.notes!.isNotEmpty ? '｜备注:${Fmt.ellipsis(i.notes!, 40)}' : ''}')
-            .join('\n');
+              .map(
+                (i) =>
+                    '- ${i.name}｜id:${i.id}｜分类:${i.categoryName}｜'
+                    '价格:${(i.purchasePrice / 100).toStringAsFixed(1)}元｜'
+                    '购买日:${_fmtDate(i.purchaseDate)}｜状态:${i.status.label}｜'
+                    '位置:${i.locationName ?? '未设置'}｜'
+                    '品牌:${i.brand ?? '-'}｜型号:${i.model ?? '-'}｜'
+                    '频次:${i.usageFrequency?.label ?? '-'}｜'
+                    '${i.effectiveWarrantyEndDate == null ? '无保修' : '保修至 ${_fmtDate(i.effectiveWarrantyEndDate!)}'}'
+                    '${i.notes != null && i.notes!.isNotEmpty ? '｜备注:${Fmt.ellipsis(i.notes!, 40)}' : ''}',
+              )
+              .join('\n');
     final userMsg = buildChatUserMessage(
       history: history,
       question: question,
@@ -437,12 +540,13 @@ class AiService {
 
     if (actionHandler != null) {
       try {
-        final insights =
-            ItemInsightService.analyze(active, sales);
+        final insights = ItemInsightService.analyze(active, sales);
         final tools = [..._insightTools(), ..._actionToolDefs()];
         return await client.chatWithTools(
-          [AiMessage('system', AiPrompts.querySystemWithActions),
-           AiMessage('user', userMsg)],
+          [
+            AiMessage('system', AiPrompts.querySystemWithActions),
+            AiMessage('user', userMsg),
+          ],
           tools,
           (name, args) => _actionToolNames.contains(name)
               ? actionHandler(name, args)
@@ -458,41 +562,44 @@ class AiService {
 
   /// 写操作工具定义（OpenAI function calling 格式）。
   static List<Map<String, dynamic>> _actionToolDefs() => [
-        {
-          'type': 'function',
-          'function': {
-            'name': 'update_item',
-            'description': '修改物品的状态/位置/备注。执行前用户会收到确认弹窗。',
-            'parameters': {
-              'type': 'object',
-              'properties': {
-                'itemId': {'type': 'string', 'description': '物品 id（数据中 id: 后的字符串）'},
-                'status': {
-                  'type': 'string',
-                  'description': '新状态：使用中/闲置/收纳中/已借出/维修中/已丢失/已丢弃/已赠送',
-                },
-                'locationName': {'type': 'string', 'description': '新位置名称（必须是已有位置的名称）'},
-                'notes': {'type': 'string', 'description': '新备注内容（整体替换）'},
-              },
-              'required': ['itemId'],
+    {
+      'type': 'function',
+      'function': {
+        'name': 'update_item',
+        'description': '修改物品的状态/位置/备注。执行前用户会收到确认弹窗。',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'itemId': {'type': 'string', 'description': '物品 id（数据中 id: 后的字符串）'},
+            'status': {
+              'type': 'string',
+              'description': '新状态：使用中/闲置/收纳中/已借出/维修中/已丢失/已丢弃/已赠送',
             },
-          },
-        },
-        {
-          'type': 'function',
-          'function': {
-            'name': 'delete_item',
-            'description': '把物品移入回收站（软删除，30 天后自动清除）。执行前用户会收到确认弹窗。',
-            'parameters': {
-              'type': 'object',
-              'properties': {
-                'itemId': {'type': 'string', 'description': '物品 id'},
-              },
-              'required': ['itemId'],
+            'locationName': {
+              'type': 'string',
+              'description': '新位置名称（必须是已有位置的名称）',
             },
+            'notes': {'type': 'string', 'description': '新备注内容（整体替换）'},
           },
+          'required': ['itemId'],
         },
-      ];
+      },
+    },
+    {
+      'type': 'function',
+      'function': {
+        'name': 'delete_item',
+        'description': '把物品移入回收站（软删除，30 天后自动清除）。执行前用户会收到确认弹窗。',
+        'parameters': {
+          'type': 'object',
+          'properties': {
+            'itemId': {'type': 'string', 'description': '物品 id'},
+          },
+          'required': ['itemId'],
+        },
+      },
+    },
+  ];
 
   static const _actionToolNames = {'update_item', 'delete_item'};
 
@@ -518,8 +625,9 @@ class AiService {
     buf.writeln();
     if (history.isNotEmpty) {
       buf.writeln('[对话记录]');
-      final tail =
-          history.length > 8 ? history.sublist(history.length - 8) : history;
+      final tail = history.length > 8
+          ? history.sublist(history.length - 8)
+          : history;
       for (final m in tail) {
         final text = m.content.length > 400
             ? '${m.content.substring(0, 400)}…'
@@ -543,9 +651,9 @@ class AiService {
   }) {
     final now_ = now ?? DateTime.now();
     final active = items.where((i) => !i.isDeleted).toList();
-    final list = (ownedOnly ? active.where((i) => i.status.isOwned) : active)
-        .toList()
-      ..sort((a, b) => b.purchasePrice.compareTo(a.purchasePrice));
+    final list =
+        (ownedOnly ? active.where((i) => i.status.isOwned) : active).toList()
+          ..sort((a, b) => b.purchasePrice.compareTo(a.purchasePrice));
     if (list.isEmpty) return '（无）';
     final buf = StringBuffer();
     if (list.length > limit) buf.writeln('共 ${list.length} 件，仅列前 $limit 件。');
@@ -565,8 +673,9 @@ class AiService {
 
   /// 疑似重复分组：同分类 ≥2 件、或同分类同品牌 ≥2 件。
   static String buildDuplicationHints(List<Item> items) {
-    final active =
-        items.where((i) => !i.isDeleted && i.status.isOwned).toList();
+    final active = items
+        .where((i) => !i.isDeleted && i.status.isOwned)
+        .toList();
     final byCat = <String, List<Item>>{};
     for (final i in active) {
       byCat.putIfAbsent(i.categoryName, () => []).add(i);
@@ -575,8 +684,10 @@ class AiService {
     for (final e in byCat.entries) {
       if (e.value.length < 2) continue;
       final desc = e.value
-          .map((i) =>
-              '${i.name}(${(i.purchasePrice / 100).toStringAsFixed(0)}元${i.brand != null ? '/${i.brand}' : ''})')
+          .map(
+            (i) =>
+                '${i.name}(${(i.purchasePrice / 100).toStringAsFixed(0)}元${i.brand != null ? '/${i.brand}' : ''})',
+          )
           .join('、');
       lines.add('- ${e.key}×${e.value.length}：$desc');
       if (lines.length >= 10) break;
@@ -586,11 +697,16 @@ class AiService {
 
   /// 已转卖明细：购价/卖价/净收入。
   static String buildSoldRoster(
-      List<Item> items, Map<String, SaleRecord> sales) {
+    List<Item> items,
+    Map<String, SaleRecord> sales,
+  ) {
     final sold = items
-        .where((i) => !i.isDeleted &&
-            i.status == ItemStatus.sold &&
-            sales[i.id] != null)
+        .where(
+          (i) =>
+              !i.isDeleted &&
+              i.status == ItemStatus.sold &&
+              sales[i.id] != null,
+        )
         .toList();
     if (sold.isEmpty) return '（无转卖记录）';
     final buf = StringBuffer();
@@ -607,7 +723,9 @@ class AiService {
 
   /// 闲置清单：价格与已用天数。
   static String buildIdleRoster(
-      List<Item> items, Map<String, SaleRecord> sales) {
+    List<Item> items,
+    Map<String, SaleRecord> sales,
+  ) {
     final idle = items
         .where((i) => !i.isDeleted && i.status == ItemStatus.idle)
         .toList();
@@ -626,12 +744,16 @@ class AiService {
   /// 近 6 个月月度数据：月份/件数/金额。
   static String buildMonthlySummary(List<Item> items) {
     final trend = StatisticsService.monthlyTrend(
-        items.where((i) => !i.isDeleted).toList(), const {},
-        months: 6);
+      items.where((i) => !i.isDeleted).toList(),
+      const {},
+      months: 6,
+    );
     if (trend.isEmpty) return '（无数据）';
     return trend
-        .map((m) =>
-            '${m.monthKey}：${m.newCount}件/${(m.purchaseTotal / 100).toStringAsFixed(0)}元')
+        .map(
+          (m) =>
+              '${m.monthKey}：${m.newCount}件/${(m.purchaseTotal / 100).toStringAsFixed(0)}元',
+        )
         .join('；');
   }
 
@@ -680,24 +802,29 @@ class AiService {
     final dupText = dups.isEmpty
         ? '（没有相似物品）'
         : dups
-            .map((m) => '- ${m.item.name}（${m.item.categoryName}，'
-                '${(m.item.purchasePrice / 100).toStringAsFixed(0)}元，'
-                '${m.item.status.label}，'
-                '持有${ItemCalculator.usedDays(m.item, sales[m.item.id], now: now)}天，'
-                '频次${m.item.usageFrequency?.label ?? '未填'}）')
-            .join('\n');
+              .map(
+                (m) =>
+                    '- ${m.item.name}（${m.item.categoryName}，'
+                    '${(m.item.purchasePrice / 100).toStringAsFixed(0)}元，'
+                    '${m.item.status.label}，'
+                    '持有${ItemCalculator.usedDays(m.item, sales[m.item.id], now: now)}天，'
+                    '频次${m.item.usageFrequency?.label ?? '未填'}）',
+              )
+              .join('\n');
 
     // 品类花费与预算状态。
     String categorySpend = '';
     if (categoryName != null) {
       final matched = active
-          .where((i) =>
-              i.categoryName.contains(categoryName) ||
-              categoryName.contains(i.categoryName))
+          .where(
+            (i) =>
+                i.categoryName.contains(categoryName) ||
+                categoryName.contains(i.categoryName),
+          )
           .toList();
-      final spent =
-          matched.fold<int>(0, (s, i) => s + i.purchasePrice);
-      categorySpend = '「$categoryName」已有 ${matched.length} 件、共花 '
+      final spent = matched.fold<int>(0, (s, i) => s + i.purchasePrice);
+      categorySpend =
+          '「$categoryName」已有 ${matched.length} 件、共花 '
           '${(spent / 100).toStringAsFixed(0)} 元。';
     }
     String budgetLine = '';
@@ -709,7 +836,8 @@ class AiService {
       final pct = (monthSpend / budgetCents * 100).toStringAsFixed(0);
       final afterPct = ((monthSpend + priceCents) / budgetCents * 100)
           .toStringAsFixed(0);
-      budgetLine = '月度预算 ${(budgetCents / 100).toStringAsFixed(0)} 元，'
+      budgetLine =
+          '月度预算 ${(budgetCents / 100).toStringAsFixed(0)} 元，'
           '本月已花 ${(monthSpend / 100).toStringAsFixed(0)} 元（$pct%），'
           '购买后约 $afterPct%。';
     }
@@ -735,11 +863,13 @@ class AiService {
   Future<Map<String, List<String>>> generateItemTags(List<Item> items) async {
     if (items.isEmpty) return const {};
     final lines = items
-        .map((i) =>
-            '${i.id}｜${i.name}｜${i.brand ?? '-'}｜${i.categoryName}')
+        .map((i) => '${i.id}｜${i.name}｜${i.brand ?? '-'}｜${i.categoryName}')
         .join('\n');
-    final raw = await client.ask(AiPrompts.kTaggingSystem, lines,
-        jsonMode: true);
+    final raw = await client.ask(
+      AiPrompts.kTaggingSystem,
+      lines,
+      jsonMode: true,
+    );
     return parseTagsResponse(raw);
   }
 
@@ -797,26 +927,30 @@ class AiService {
     required int year,
   }) async {
     final active = items.where((i) => !i.isDeleted).toList();
-    final inYear =
-        active.where((i) => i.purchaseDate.year == year).toList();
+    final inYear = active.where((i) => i.purchaseDate.year == year).toList();
     final spend = inYear.fold<int>(0, (s, i) => s + i.purchasePrice);
     final monthly = List.filled(12, 0);
     for (final i in inYear) {
       monthly[i.purchaseDate.month - 1] += i.purchasePrice;
     }
-    final topItems = [...inYear]..sort((a, b) => b.purchasePrice.compareTo(a.purchasePrice));
+    final topItems = [...inYear]
+      ..sort((a, b) => b.purchasePrice.compareTo(a.purchasePrice));
     final soldInYear = active
-        .where((i) =>
-            i.status == ItemStatus.sold &&
-            sales[i.id] != null &&
-            sales[i.id]!.saleDate.year == year)
+        .where(
+          (i) =>
+              i.status == ItemStatus.sold &&
+              sales[i.id] != null &&
+              sales[i.id]!.saleDate.year == year,
+        )
         .toList();
     final saleIncome = soldInYear.fold<int>(
-        0, (s, i) => s + (sales[i.id]?.netIncome ?? 0));
+      0,
+      (s, i) => s + (sales[i.id]?.netIncome ?? 0),
+    );
     final idle = active
-        .where((i) =>
-            i.status == ItemStatus.idle &&
-            i.purchaseDate.year == year)
+        .where(
+          (i) => i.status == ItemStatus.idle && i.purchaseDate.year == year,
+        )
         .toList();
 
     final byCat = <String, int>{};
@@ -834,7 +968,8 @@ class AiService {
       if (topCats.isNotEmpty)
         '花钱最多的分类：${topCats.take(3).map((e) => '${e.key}(${(e.value / 100).toStringAsFixed(0)}元)').join('、')}。',
       '转卖 ${soldInYear.length} 件，净回收 ${(saleIncome / 100).toStringAsFixed(0)} 元${soldInYear.isEmpty ? '' : '（${soldInYear.take(5).map((i) => i.name).join('、')}）'}。',
-      if (idle.isNotEmpty) '这一年购买但现已闲置：${idle.length} 件（${idle.take(5).map((i) => i.name).join('、')}）。',
+      if (idle.isNotEmpty)
+        '这一年购买但现已闲置：${idle.length} 件（${idle.take(5).map((i) => i.name).join('、')}）。',
       if (inYear.isEmpty) '（该年没有任何记录，如实告知即可。）',
     ];
     return client.ask(AiPrompts.yearlyReportSystem, lines.join('\n'));
@@ -852,18 +987,24 @@ class AiService {
       ..sort((a, b) => b.purchaseTotal.compareTo(a.purchaseTotal));
     final topCats = cats
         .take(4)
-        .map((c) =>
-            '${c.categoryName}（${c.count}件，共${(c.purchaseTotal / 100).toStringAsFixed(0)}元，日均均值${(c.avgDailyCost).toStringAsFixed(1)}元）')
+        .map(
+          (c) =>
+              '${c.categoryName}（${c.count}件，共${(c.purchaseTotal / 100).toStringAsFixed(0)}元，日均均值${(c.avgDailyCost).toStringAsFixed(1)}元）',
+        )
         .join('；');
     final highDaily = insights.highDailyCost
-        .map((i) =>
-            '${i.name}（${(i.purchasePrice / 100).toStringAsFixed(0)}元，日均${(ItemCalculator.dailyCost(i, sales[i.id]) / 100).toStringAsFixed(1)}元）')
+        .map(
+          (i) =>
+              '${i.name}（${(i.purchasePrice / 100).toStringAsFixed(0)}元，日均${(ItemCalculator.dailyCost(i, sales[i.id]) / 100).toStringAsFixed(1)}元）',
+        )
         .join('；');
     final idleNames = insights.longIdle.take(6).map((i) => i.name).join('、');
     final warrantyNames = insights.expiringWarranty
         .take(6)
-        .map((i) =>
-            '${i.name}（${i.effectiveWarrantyEndDate!.month}/${i.effectiveWarrantyEndDate!.day}）')
+        .map(
+          (i) =>
+              '${i.name}（${i.effectiveWarrantyEndDate!.month}/${i.effectiveWarrantyEndDate!.day}）',
+        )
         .join('、');
     return [
       '当前拥有 ${overview.ownedCount} 件，持有购买总额 ${(overview.ownedPurchaseTotal / 100).toStringAsFixed(0)} 元；'
@@ -871,7 +1012,8 @@ class AiService {
           '转卖回收净收入 ${(overview.saleNetIncomeTotal / 100).toStringAsFixed(0)} 元。',
       '分类金额从高到低：$topCats。',
       if (highDaily.isNotEmpty) '日均成本最高的持有物品：$highDaily。',
-      if (idleNames.isNotEmpty) '长期闲置（${insights.longIdle.length} 件）：$idleNames。',
+      if (idleNames.isNotEmpty)
+        '长期闲置（${insights.longIdle.length} 件）：$idleNames。',
       if (warrantyNames.isNotEmpty)
         '保修将到期/已过期（${insights.expiringWarranty.length} 件）：$warrantyNames。',
       if (insights.maintenanceDue.isNotEmpty)
@@ -882,7 +1024,11 @@ class AiService {
       if (budget != null)
         '月度预算：本月已花费 ${(budget.spentCents / 100).toStringAsFixed(0)} 元 / '
             '预算 ${(budget.budgetCents / 100).toStringAsFixed(0)} 元'
-            '（${(budget.ratio * 100).toStringAsFixed(0)}%${budget.level == BudgetLevel.exceeded ? '，已超支' : budget.level == BudgetLevel.warning ? '，接近预算' : ''}）。',
+            '（${(budget.ratio * 100).toStringAsFixed(0)}%${budget.level == BudgetLevel.exceeded
+                ? '，已超支'
+                : budget.level == BudgetLevel.warning
+                ? '，接近预算'
+                : ''}）。',
     ].join('\n');
   }
 
@@ -915,30 +1061,6 @@ class AiService {
 
   // ---------- 内部工具 ----------
 
-  static Map<String, dynamic>? _extractJson(String raw) {
-    var text = raw.trim();
-    if (text.startsWith('```')) {
-      text = text
-          .replaceAll(RegExp(r'^```[a-zA-Z]*\n?'), '')
-          .replaceAll(RegExp(r'\n?```$'), '')
-          .trim();
-    }
-    try {
-      return jsonDecode(text) as Map<String, dynamic>;
-    } catch (_) {
-      final start = text.indexOf('{');
-      final end = text.lastIndexOf('}');
-      if (start >= 0 && end > start) {
-        try {
-          return jsonDecode(text.substring(start, end + 1))
-              as Map<String, dynamic>;
-        } catch (_) {
-          return null;
-        }
-      }
-      return null;
-    }
-  }
 
   static String? _str(dynamic v) {
     if (v == null) return null;

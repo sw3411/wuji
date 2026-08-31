@@ -84,7 +84,8 @@ class _LockGateState extends ConsumerState<LockGate>
   @override
   Widget build(BuildContext context) {
     final locked =
-        ref.watch(appSettingsProvider).appLockEnabled && !ref.watch(appUnlockedProvider);
+        ref.watch(appSettingsProvider).appLockEnabled &&
+        !ref.watch(appUnlockedProvider);
     if (!locked) return widget.child;
     // 用 Stack 盖住而不是替换 child：路由栈保持挂载，解锁后回到原页面。
     return Stack(
@@ -133,15 +134,19 @@ class _LockScreen extends StatelessWidget {
                     color: cs.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child:
-                      Icon(Icons.inventory_2_outlined, size: 40, color: cs.primary),
+                  child: Icon(
+                    Icons.inventory_2_outlined,
+                    size: 40,
+                    color: cs.primary,
+                  ),
                 ),
                 const SizedBox(height: 20),
-                Text(AppInfo.appName,
-                    style: AppTheme.display(cs.onSurface, size: 28)),
+                Text(
+                  AppInfo.appName,
+                  style: AppTheme.display(cs.onSurface, size: 28),
+                ),
                 const SizedBox(height: 8),
-                Text('物品数据已保护',
-                    style: AppTheme.caption(cs.onSurfaceVariant)),
+                Text('物品数据已保护', style: AppTheme.caption(cs.onSurfaceVariant)),
                 const SizedBox(height: 32),
                 FilledButton.icon(
                   onPressed: authenticating ? null : onUnlock,
@@ -149,7 +154,8 @@ class _LockScreen extends StatelessWidget {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2))
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Icon(Icons.fingerprint),
                   label: Text(authenticating ? '验证中…' : '解锁'),
                 ),
